@@ -8,3 +8,7 @@ Thumbs.db
 
 .rbenv-version
 .rvmrc
+
+Gemfile.lock
+# [ezequielv] not sure about this one
+.jekyll-metadata
