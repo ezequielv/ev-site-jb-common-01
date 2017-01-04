@@ -89,8 +89,8 @@ JB :
   comments :
     provider : disqus
     disqus :
-      # short_name : jekyllbootstrap
-      short_name : ezequielv_disqus
+      # orig: short_name : jekyllbootstrap
+      short_name : ezequielv-blog-tech
     livefyre :
       site_id : 123
     intensedebate :
