@@ -31,6 +31,19 @@
   {% assign jb_prod_env = jekyll.environment %}
 {% endif %}
 
+{% comment %}
+  ezequielv: added support for a custom yaml config option
+  (currently in file _config_build_github.yml):
+
+  JB:
+    deployment_type: github
+
+{% endcomment %}
+{% if site.JB.deployment_type and site.JB.deployment_type != "" %}
+  {% assign is_production = true %}
+  {% assign jb_prod_env = site.JB.deployment_type %}
+{% endif %}
+
 {% if site.github %}
   {% assign is_production = true %}
   {% assign jb_prod_env = "github" %}
