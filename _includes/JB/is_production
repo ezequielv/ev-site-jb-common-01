@@ -35,8 +35,14 @@
   ezequielv: added support for a custom yaml config option
   (currently in file _config_build_github.yml):
 
+  ==[ _config_build_github.yml ]==
   JB:
     deployment_type: github
+  ==[ end ]==
+
+  Then build the site like this:
+
+    $ bundle exec jekyll build --config _config.yml,_config_build_github.yml --safe
 
 {% endcomment %}
 {% if site.JB.deployment_type and site.JB.deployment_type != "" %}
