@@ -1,3 +1,7 @@
+# Build the site like this:
+#
+#   $ bundle exec jekyll build --config _config.yml,_config_build_github.yml --safe
+#
 JB:
   deployment_type: github
 
