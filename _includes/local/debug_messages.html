@@ -1,7 +1,7 @@
 
-
 {% include JB/setup %}
 
+{% if is_production != true %}
 <h2>ezequielv debug messages</h2>
 
 <ul>
@@ -10,6 +10,7 @@
  <li>BASE_PATH: {{ BASE_PATH }};</li>
  <li>site.JB.BASE_PATH: {{ site.JB.BASE_PATH }};</li>
 </ul>
+{% endif %}
 
 {% comment %}
 TODO: put vim modeline here
