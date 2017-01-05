@@ -1,5 +1,89 @@
 {% if site.JB.comments.provider and page.comments != false %}
 
+{% comment %}
+  TODO: do per-module "pre" and "post" includes so that most/every generic module can include files at the right moment
+{% endcomment %}
+{% include local/debug_messages.html %}
+
+{% comment %}normalise variables{% endcomment %}
+{% comment %}
+# {% if jb_comment_id %}
+# {% else %}
+#   {% assign jb_comment_id = "" %}
+# {% endif %}
+{% endcomment %}
+
+{% if jb_module_debug_messages_enabled %}
+  {% assign jb_module_comments_debug_enabled = true %}
+{% endif %}
+{% comment %}
+{% if is_production != true %}
+  {% assign jb_module_comments_debug_enabled = true %}
+{% endif %}
+{% endcomment %}
+
+{% if jb_comment_id %}
+{% else %}
+  {% if page.comments_var_id_ident_method and page.comments_var_id_ident_method != "none" %}
+
+    {% comment %}
+      TODO: a single string is treated like an array, in terms of 'for' loops, so we can always either:
+        - use the source variable as it was;
+        - just assign it to the 'dest' variable -- no need for the "split with impossible separator" trick.
+    {% endcomment %}
+    {% comment %}assign to l_ident_stages an array with the top-level ids taken from the page front matter{% endcomment %}
+    {% if page.comments_var_id_ident_method[0] %}
+      {% assign l_ident_stages = page.comments_var_id_ident_method %}
+    {% else %}
+      {% comment %} transform: string =] list{% endcomment %}
+      {% assign l_ident_stages = page.comments_var_id_ident_method | split: "--impossible-separator--" %}
+    {% endif %}
+    {% if jb_module_comments_debug_enabled %}
+      <h2>JB/comments debug messages</h2>
+
+      <ul>
+       <li>l_ident_stages: {{ l_ident_stages | join: ", " }};</li>
+    {% endif %}
+
+    {% for l_ident_stage_top_now in l_ident_stages %}
+      {% if jb_module_comments_debug_enabled %}
+        <li>l_ident_stage_top_now: {{ l_ident_stage_top_now }};</li>
+      {% endif %}
+      {% comment %}assign to l_ident_stages_inner an array with the concrete (expanded) stage ids{% endcomment %}
+      {% if l_ident_stage_top_now == "auto" %}
+        {% assign l_ident_stages_inner = "ident:relurl" | split: ":" %}
+      {% else %}
+        {% assign l_ident_stages_inner = l_ident_stage_top_now | split: "--impossible-separator--" %}
+      {% endif %}
+      {% if jb_module_comments_debug_enabled %}
+        <li>l_ident_stages_inner: {{ l_ident_stages_inner | join: ", " }};</li>
+      {% endif %}
+
+      {% for l_ident_stage_inner_now in l_ident_stages_inner %}
+        {% if jb_module_comments_debug_enabled %}
+          <li>l_ident_stage_inner_now: {{ l_ident_stage_inner_now }};</li>
+        {% endif %}
+        {% if jb_comment_id %}
+          {% break %}
+        {% endif %}
+
+        {% case l_ident_stage_inner_now %}
+        {% when "ident" %}
+          {% comment %}TODO: implement (see: https://jekyllrb.com/docs/variables/) (maybe: use in priority order: page.id, page.comment_id (should this be the defaut near the beginning?), ...?{% endcomment %}
+        {% when "relurl" %}
+          {% comment %}TODO: implement{% endcomment %}
+        {% endcase %}
+      {% endfor %}
+    {% endfor %}
+
+    {% if jb_module_comments_debug_enabled %}
+      </ul>
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{% comment %}TODO: implement setting jb_comment_url (from page.comments_var_url_enable){% endcomment %}
+
 {% case site.JB.comments.provider %}
 {% when "disqus" %}
   {% include JB/comments-providers/disqus %}
