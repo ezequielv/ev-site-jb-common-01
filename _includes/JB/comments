@@ -5,13 +5,10 @@
 {% endcomment %}
 {% include local/debug_messages.html %}
 
-{% comment %}normalise variables{% endcomment %}
 {% comment %}
-# {% if jb_comment_id %}
-# {% else %}
-#   {% assign jb_comment_id = "" %}
-# {% endif %}
+  TODO: disable forced debug messages in this module
 {% endcomment %}
+{% assign jb_module_comments_debug_enabled = true %}
 
 {% if jb_module_debug_messages_enabled %}
   {% assign jb_module_comments_debug_enabled = true %}
