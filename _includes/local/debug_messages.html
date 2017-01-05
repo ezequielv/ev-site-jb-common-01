@@ -1,17 +1,37 @@
 
+{% if jb_module_debug_messages_processed %}
+{% else %}
+
+{% assign jb_module_debug_messages_processed = true %}
+
 {% include JB/setup %}
 
+{% comment %}
+{% endcomment %}
+{% assign jb_module_debug_messages_enabled = true %}
+
 {% if is_production != true %}
-<h2>ezequielv debug messages</h2>
+{% assign jb_module_debug_messages_enabled = true %}
+{% endif %}
+
+{% if jb_module_debug_messages_enabled %}
+<h2>main debug messages</h2>
 
 <ul>
  <li>is_production: {{ is_production }};</li>
  <li>jb_prod_env: {{ jb_prod_env }};</li>
  <li>BASE_PATH: {{ BASE_PATH }};</li>
  <li>site.JB.BASE_PATH: {{ site.JB.BASE_PATH }};</li>
+ <li>page.id: {{ page.id }};</li>
+ <li>page.url: {{ page.url }};</li>
+ <li>page.date: {{ page.date }};</li>
+ <li>jb_comment_id: {{ jb_comment_id }};</li>
+ <li>jb_comment_url: {{ jb_comment_url }};</li>
 </ul>
 {% endif %}
 
 {% comment %}
 TODO: put vim modeline here
 {% endcomment %}
+
+{% endif %} {% comment %}jb_module_debug_messages_processed{% endcomment %}
