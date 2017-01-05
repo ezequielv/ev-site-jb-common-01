@@ -102,7 +102,7 @@ JB :
       colorscheme: light
     duoshuo :
       short_name : jekyllbootstrap
-   
+
   # Settings for analytics helper
   # Set 'provider' to the analytics provider you want to use.
   # Set 'provider' to false to turn analytics off globally.
@@ -139,4 +139,25 @@ JB :
   # and include your custom code. Your custom file must be defined at:
   #   ./_includes/custom/[HELPER]
   # where [HELPER] is the name of the helper you are overriding.
-  
+
+# see also: https://jekyllrb.com/docs/configuration/#front-matter-defaults
+defaults :
+  -
+    scope :
+      path : ""
+    values :
+      # This sets the variable jb_comment_id
+      # type:
+      #   - string with an id from the list below; or
+      #   - list of strings, where each string is an id from the list below;
+      #
+      # supported ids:
+      #  - "none", nil or unset: leave unset;
+      #  - "auto": try to use, in order: "ident", "relurl"
+      #  - "ident": identifier only (leaves unset if it could not find anything);
+      #  - "relurl": relative url (page.url) (does not include BASE_PATH);
+      comments_var_id_ident_method : auto
+      # This sets the variable jb_comment_url
+      # possible values: falsy (nil, false, unset), truthy (anything else);
+      comments_var_url_enable : true
+
