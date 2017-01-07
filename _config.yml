@@ -154,8 +154,10 @@ defaults :
       # supported ids:
       #  - "none", nil or unset: leave unset;
       #  - "auto": try to use, in order: "ident", "relurl"
-      #  - "ident": identifier only (leaves unset if it could not find anything);
-      #  - "relurl": relative url (page.url) (does not include BASE_PATH);
+      #  - "ident": identifiers only: try to use, in order: "commentid", "pageid"
+      #  - "commentid": use 'page.comment_id';
+      #  - "pageid": use 'page.id';
+      #  - "relurl": relative url ('page.url') (does not include BASE_PATH);
       comments_var_id_ident_method : auto
       # This sets the variable jb_comment_url
       # possible values: falsy (nil, false, unset), truthy (anything else);

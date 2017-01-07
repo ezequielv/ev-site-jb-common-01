@@ -7,8 +7,8 @@
 
 {% comment %}
   TODO: disable forced debug messages in this module
-{% endcomment %}
 {% assign jb_module_comments_debug_enabled = true %}
+{% endcomment %}
 
 {% if jb_module_debug_messages_enabled %}
   {% assign jb_module_comments_debug_enabled = true %}
@@ -18,6 +18,12 @@
   {% assign jb_module_comments_debug_enabled = true %}
 {% endif %}
 {% endcomment %}
+
+{% if jb_module_comments_debug_enabled %}
+  <h2>JB/comments debug messages</h2>
+
+  <ul>
+{% endif %}
 
 {% if jb_comment_id %}
 {% else %}
@@ -36,50 +42,94 @@
       {% assign l_ident_stages = page.comments_var_id_ident_method | split: "--impossible-separator--" %}
     {% endif %}
     {% if jb_module_comments_debug_enabled %}
-      <h2>JB/comments debug messages</h2>
-
-      <ul>
-       <li>l_ident_stages: {{ l_ident_stages | join: ", " }};</li>
+      <li>l_ident_stages: {{ l_ident_stages | join: ", " }};</li>
     {% endif %}
 
-    {% for l_ident_stage_top_now in l_ident_stages %}
-      {% if jb_module_comments_debug_enabled %}
-        <li>l_ident_stage_top_now: {{ l_ident_stage_top_now }};</li>
-      {% endif %}
-      {% comment %}assign to l_ident_stages_inner an array with the concrete (expanded) stage ids{% endcomment %}
-      {% if l_ident_stage_top_now == "auto" %}
-        {% assign l_ident_stages_inner = "ident:relurl" | split: ":" %}
-      {% else %}
-        {% assign l_ident_stages_inner = l_ident_stage_top_now | split: "--impossible-separator--" %}
-      {% endif %}
-      {% if jb_module_comments_debug_enabled %}
-        <li>l_ident_stages_inner: {{ l_ident_stages_inner | join: ", " }};</li>
-      {% endif %}
-
-      {% for l_ident_stage_inner_now in l_ident_stages_inner %}
-        {% if jb_module_comments_debug_enabled %}
-          <li>l_ident_stage_inner_now: {{ l_ident_stage_inner_now }};</li>
-        {% endif %}
-        {% if jb_comment_id %}
-          {% break %}
-        {% endif %}
-
-        {% case l_ident_stage_inner_now %}
-        {% when "ident" %}
-          {% comment %}TODO: implement (see: https://jekyllrb.com/docs/variables/) (maybe: use in priority order: page.id, page.comment_id (should this be the defaut near the beginning?), ...?{% endcomment %}
-        {% when "relurl" %}
-          {% comment %}TODO: implement{% endcomment %}
-        {% endcase %}
-      {% endfor %}
-    {% endfor %}
+    {% capture l_ident_stages_string %}:edge_delim:{{ l_ident_stages | join: ":" }}:edge_delim:{% endcapture %}
+    {% assign l_ident_stages_inner_list = "auto:ident:pageid:relurl" | split: ":" %}
 
     {% if jb_module_comments_debug_enabled %}
-      </ul>
+      <li>l_ident_stages_string (for replacements): {{ l_ident_stages_string }};</li>
+    {% endif %}
+
+    {% assign l_ident_stages_string_last = l_ident_stages_string %}
+    {% for l_i in (1..100) %}
+      {% for l_ident_stage_inner_now in l_ident_stages_inner_list %}
+        {% assign l_stage_replace_src = l_ident_stage_inner_now %}
+        {% assign l_stage_replace_dst = nil %}
+
+        {% case l_ident_stage_inner_now %}
+        {% when "auto" %}
+          {% assign l_stage_replace_dst = "ident:relurl" %}
+        {% when "ident" %}
+          {% assign l_stage_replace_dst = "commentid:pageid" %}
+        {% endcase %}
+
+        {% if l_stage_replace_src and l_stage_replace_dst %}
+          {% assign l_ident_stages_string = l_ident_stages_string | replace: l_stage_replace_src, l_stage_replace_dst %}
+        {% endif %}
+      {% endfor %}
+
+      {% if l_ident_stages_string == l_ident_stages_string_last %}
+        {% break %}
+      {% endif %}
+      {% assign l_ident_stages_string_last = l_ident_stages_string %}
+    {% endfor %}
+
+    {% assign l_ident_stages = l_ident_stages_string | replace: ":edge_delim:", "" | split: ":" %}
+
+    {% if jb_module_comments_debug_enabled %}
+      <li>l_ident_stages_string (replaced): {{ l_ident_stages_string }};</li>
+      <li>l_ident_stages (replaced, list): {{ l_ident_stages | join: ", " }};</li>
+    {% endif %}
+
+    {% for l_ident_stage_now in l_ident_stages %}
+      {% if jb_module_comments_debug_enabled %}
+        <li>l_ident_stage_now: {{ l_ident_stage_now }};</li>
+      {% endif %}
+
+      {% if jb_comment_id and jb_comment_id.size > 0 %}
+        {% break %}
+      {% endif %}
+
+      {% comment %}see also: https://jekyllrb.com/docs/variables/{% endcomment %}
+      {% case l_ident_stage_now %}
+      {% when "commentid" %}
+        {% assign jb_comment_id = page.comment_id %}
+      {% when "pageid" %}
+        {% assign jb_comment_id = page.id %}
+      {% when "relurl" %}
+        {% assign jb_comment_id = page.url %}
+      {% endcase %}
+    {% endfor %}
+
+    {% if jb_comment_id and jb_comment_id.size > 0 %}
+    {% else %}
+      {% assign jb_comment_id = nil %}
     {% endif %}
   {% endif %}
 {% endif %}
 
-{% comment %}TODO: implement setting jb_comment_url (from page.comments_var_url_enable){% endcomment %}
+{% if page.comments_var_url_enable %}
+  {% if jb_comment_url %}
+  {% else %}
+    {% if jb_base_path %}
+    {% else %}
+      {% if site.JB.BASE_PATH and site.JB.BASE_PATH != '' %}
+        {% assign jb_base_path = site.JB.BASE_PATH %}
+      {% endif %}
+    {% endif %}
+    {% capture jb_comment_url %}{{ jb_base_path }}{{ page.url }}{% endcapture %}
+  {% endif %}
+  {% assign jb_comment_url = jb_comment_url | default: nil %}
+{% endif %}
+
+
+{% if jb_module_comments_debug_enabled %}
+    <li>jb_comment_id: {{ jb_comment_id }};</li>
+    <li>jb_comment_url: {{ jb_comment_url }};</li>
+  </ul>
+{% endif %}
 
 {% case site.JB.comments.provider %}
 {% when "disqus" %}
