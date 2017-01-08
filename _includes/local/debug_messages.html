@@ -6,15 +6,15 @@
 
 {% include JB/setup %}
 
-{% comment %}
-  TODO: disable forced debug messages in this module
-{% endcomment %}
-{% comment %}
-{% endcomment %}
-{% assign jb_module_debug_messages_enabled = true %}
-
-{% if is_production != true %}
-{% assign jb_module_debug_messages_enabled = true %}
+{% if page.debug_content %}
+  {% if page.debug_content == "dev" %}
+    {% assign jb_module_debug_messages_enabled = true %}
+  {% elsif page.debug_content == "none" %}
+  {% else %}
+    {% if is_production != true %}
+      {% assign jb_module_debug_messages_enabled = true %}
+    {% endif %}
+  {% endif %}
 {% endif %}
 
 {% if jb_module_debug_messages_enabled %}
