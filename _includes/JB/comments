@@ -5,19 +5,9 @@
 {% endcomment %}
 {% include local/debug_messages.html %}
 
-{% comment %}
-  TODO: disable forced debug messages in this module
-{% assign jb_module_comments_debug_enabled = true %}
-{% endcomment %}
-
 {% if jb_module_debug_messages_enabled %}
   {% assign jb_module_comments_debug_enabled = true %}
 {% endif %}
-{% comment %}
-{% if is_production != true %}
-  {% assign jb_module_comments_debug_enabled = true %}
-{% endif %}
-{% endcomment %}
 
 {% if jb_module_comments_debug_enabled %}
   <h2>JB/comments debug messages</h2>
@@ -119,13 +109,17 @@
         {% assign jb_site_url = site.production_url %}
       {% endif %}
     {% endif %}
-    {% capture jb_comment_url %}{{ jb_site_url }}{{ page.url }}{% endcapture %}
+    {% assign jb_site_url = jb_site_url | default: nil %}
+
+    {% if jb_site_url %}
+      {% capture jb_comment_url %}{{ jb_site_url }}{{ page.url }}{% endcapture %}
+    {% endif %}
   {% endif %}
   {% assign jb_comment_url = jb_comment_url | default: nil %}
 {% endif %}
 
-
 {% if jb_module_comments_debug_enabled %}
+    <li>jb_site_url: {{ jb_site_url }};</li>
     <li>jb_comment_id: {{ jb_comment_id }};</li>
     <li>jb_comment_url: {{ jb_comment_url }};</li>
   </ul>
