@@ -7,13 +7,12 @@
 {% include JB/setup %}
 
 {% if page.debug_content %}
-  {% if page.debug_content == "dev" %}
-    {% assign jb_module_debug_messages_enabled = true %}
-  {% elsif page.debug_content == "none" %}
-  {% else %}
+  {% if page.debug_content == "dev" or page.debug_content == "auto" or page.debug_content == "default" %}
     {% if is_production != true %}
       {% assign jb_module_debug_messages_enabled = true %}
     {% endif %}
+  {% elsif page.debug_content == "true" or page.debug_content == "forced" %}
+    {% assign jb_module_debug_messages_enabled = true %}
   {% endif %}
 {% endif %}
 
