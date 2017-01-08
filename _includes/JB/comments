@@ -113,13 +113,13 @@
 {% if page.comments_var_url_enable %}
   {% if jb_comment_url %}
   {% else %}
-    {% if jb_base_path %}
+    {% if jb_site_url %}
     {% else %}
-      {% if site.JB.BASE_PATH and site.JB.BASE_PATH != '' %}
-        {% assign jb_base_path = site.JB.BASE_PATH %}
+      {% if site.production_url and site.production_url.size > 0 %}
+        {% assign jb_site_url = site.production_url %}
       {% endif %}
     {% endif %}
-    {% capture jb_comment_url %}{{ jb_base_path }}{{ page.url }}{% endcapture %}
+    {% capture jb_comment_url %}{{ jb_site_url }}{{ page.url }}{% endcapture %}
   {% endif %}
   {% assign jb_comment_url = jb_comment_url | default: nil %}
 {% endif %}
