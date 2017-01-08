@@ -3,6 +3,7 @@ layout: post
 category : lessons
 tagline: "Supporting tagline"
 tags : [intro, beginner, jekyll, tutorial]
+debug_content: true
 # [ezequielv] test: comment_id: my_comment_id_for_jekyll_introduction
 # [ezequielv] test: id: my_page_id_for_jekyll_introduction
 # [ezequielv] test: comments_var_id_ident_method : [relurl, pageid, commentid]
