@@ -1,6 +1,7 @@
-# This is the default format. 
-# For more see: http://jekyllrb.com/docs/permalinks/
-permalink: /:categories/:year/:month/:day/:title 
+# [ezequielv] old? (see: https://github.com/jekyll/jekyll/issues/4145#issuecomment-158140960)
+# prev: # This is the default format.
+# prev: # For more see: http://jekyllrb.com/docs/permalinks/
+# prev: permalink: /:categories/:year/:month/:day/:title
 
 exclude: [".rvmrc", ".rbenv-version", "README.md", "Rakefile", "changelog.md"]
 # [ezequielv] not supported: highlighter: pygments
@@ -162,4 +163,18 @@ defaults :
       # This sets the variable jb_comment_url
       # possible values: falsy (nil, false, unset), truthy (anything else);
       comments_var_url_enable : true
+  # values for jekyll-based site generation (where the suffix is not needed)
+  # note: github works well with this
+  # unchanged: -
+  # unchanged:   scope:
+  # unchanged:     type: pages
+  # unchanged:   values:
+  # unchanged:     # idea: use extension: permalink: /:path/:basename:output_ext
+  # unchanged:     permalink: /:path/:basename
+  -
+    scope:
+      type: posts
+    values:
+      # idea: permalink: /:year/:month/:day/:title
+      permalink: /:categories/:year/:month/:day/:title
 
