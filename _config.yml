@@ -148,6 +148,10 @@ defaults :
     scope :
       path : ""
     values :
+      # TODO: allow defaults to be set from JB.site.{property_name}, too/instead
+      #  (so no complicated defaults need to be set here, especially when using multiple config files, which ultimately need
+      #  a replicated 'defaults' section of their own)
+      #
       # This sets the variable jb_comment_id
       # type:
       #   - string with an id from the list below; or
@@ -178,4 +182,32 @@ defaults :
     values:
       # idea: permalink: /:year/:month/:day/:title
       permalink: /:categories/:year/:month/:day/:title
+  # [ezequielv] desperately trying to disable copying of collection files to the 'site.destination' directory
+  # NOTE: when a default page attribute of 'output : false' is added for a collection in the 'defaults' section,
+  #  the collection is *not* copied to the destination, as intended.  However, the file(s) in that collection
+  #  are not accessible through 'site.documents', 'site.{collection}.files', 'site.{collection}.docs', etc.
+  #  Q: what can I do to detect whether a file is present without having it copied to the destination? (which is not really needed,
+  #     as the file is included from its "source" location).
+  -
+    scope:
+      type : "includes_coll"
+    values :
+      output : false
+  # -
+  #   scope:
+  #     type : "includes_opt"
+  #   values :
+  #     output : false
+
+# [ezequielv] did not work (used defaults above instead)
+# idea from reading the example in https://jekyllrb.com/docs/configuration/#front-matter-defaults (search for "my_collection")
+collections :
+  # for the default value
+  includes_opt :
+    output : false
+  # NOTE: if a collection is added here ('output : false'), then that collection is still accessible -- it seems that
+  #  configuring the 'output : false' as a page-deafault in the "defaults" section above is the only thing that works.
+  #  Furthermore, having the 'output : false' here seems to "mask" the page-default(s) for that collection!
+  # includes_coll :
+  #   output : false
 
