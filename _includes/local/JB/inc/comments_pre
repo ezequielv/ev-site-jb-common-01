@@ -1,0 +1,7 @@
+{% include local/debug_messages.html %}
+
+{% if jb_module_debug_messages_enabled %}
+  {% assign jb_module_comments_debug_enabled = true %}
+{% endif %}
+
+<p>hello from local/JB/inc/comments_pre</p>
