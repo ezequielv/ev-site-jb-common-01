@@ -1,13 +1,7 @@
 {% if site.JB.comments.provider and page.comments != false %}
 
-{% comment %}
-  TODO: do per-module "pre" and "post" includes so that most/every generic module can include files at the right moment
-{% endcomment %}
-{% include local/debug_messages.html %}
-
-{% if jb_module_debug_messages_enabled %}
-  {% assign jb_module_comments_debug_enabled = true %}
-{% endif %}
+{% comment %} the module below can define jb_module_comments_debug_enabled (boolean), if desired {% endcomment %}
+{% include JB/include_optional file="local/JB/inc/comments_pre" %}
 
 {% if jb_module_comments_debug_enabled %}
   <h2>JB/comments debug messages</h2>
@@ -125,6 +119,8 @@
   </ul>
 {% endif %}
 
+{% include JB/include_optional file="local/JB/inc/comments_setup_post" %}
+
 {% case site.JB.comments.provider %}
 {% when "disqus" %}
   {% include JB/comments-providers/disqus %}
@@ -139,5 +135,7 @@
 {% when "custom" %}
   {% include custom/comments %}
 {% endcase %}
+
+{% include JB/include_optional file="local/JB/inc/comments_post" %}
 
 {% endif %}
