@@ -1,0 +1,85 @@
+{% comment %}<!--
+  param:  file = "local/my_file"
+  return: include_optional_result = { truthy | falsy }
+
+  examples:
+    {% include JB/include_optional file="local/my_file" %}
+    {% if include_optional_result %}
+      Found and included "{{ site.includes_dir }}/local/my_file"!
+    {% else %}
+    Did not find "{{ site.includes_dir }}/local/my_file".
+    {% endif %}
+
+-->{% endcomment %}
+
+{% comment %}
+  IDEA #1:
+    - eliminate this hack (but commit it to a branch first) that assumes that files to be included *are* available in some way through liquid/jekyll variables;
+    - allow the user to define a collection "jb_includes_opt".
+    - its default path will be determined by jekyll to be '_{collection_name}';
+    - the user can choose any path, by specifying it in the '_config.yml' file:
+
+      collections :
+        jb_includes_opt :
+          relative_directory : _includes/local/opt
+
+    IDEA #1.1
+      - if the "jb_includes_opt" collection exists:
+        - include the file forcibly ({% include {{ file.. }} %});
+
+    IDEA #1.2
+      - if the collection does not exist:
+        - use a default path of "_includes/_optional_defaults" or something similar:
+          - all these files are zero-byte files:
+            - used as placeholders for the forced inclusion
+            - used as a "template" to copy to the user directory, so after a 'git merge' or 'git pull', the user can do:
+              - $ cp -Rn _includes/_optional_defaults/ _jb_includes_opt/
+          - the benefit of this over IDEA #1.1 is that the zero-byte files act as "test data" that:
+            - check that no files are missing from the "template" directory;
+      - forcibly include the file: {{ l_include_optional_incdir }}/{{ l_include_optional_relpath }}
+
+    NOTE: code below is still using 'includes_opt' (and its directory name '_includes_opt') instead of 'jb_includes_opt' ('_jb_includes_opt');
+
+{% endcomment %}
+
+{% assign l_include_optional_relpath = include.file %}
+{% comment %} {% capture l_include_optional_incdir %}/{{ site.JB.include_optional_basedir | default: "_includes_opt" }}{% endcapture %} {% endcomment %}
+{% capture l_include_optional_incdir %}{{ site.includes_opt.directory | default: "/_includes_opt" }}{% endcapture %}
+{% comment %} {% assign l_include_optional_file = "/" | append: site.includes_dir | append: "/" | append: l_include_optional_relpath %} {% endcomment %}
+{% capture l_include_optional_file %}{{ l_include_optional_incdir }}/{{ l_include_optional_relpath }}{% endcapture %}
+
+<p>l_include_optional_incdir: <tt>{{ l_include_optional_incdir }}</tt></p>
+<p>l_include_optional_relpath: <tt>{{ l_include_optional_relpath }}</tt></p>
+<p>l_include_optional_file: <tt>{{ l_include_optional_file }}</tt></p>
+
+
+{% include JB/file_exists file=l_include_optional_file %}
+{% assign include_optional_result = file_exists_result %}
+{% assign file_exists_result = nil %}
+
+{% if true %} {% comment %} [debug] TODO: remove (debug) {% endcomment %}
+<p>optional include. path=<tt>{{ l_include_optional_relpath }}</tt>; file=<tt>{{ l_include_optional_file }}</tt>; result={{ include_optional_result }};</p>
+{% for file_now in site.documents %}
+  <p>document: <tt>{{ file_now.path }}</tt></p>
+{% endfor %}
+{% for coll_now in site.collections %}
+  <p>collection.label: {{ coll_now.label }}</p>
+  <p>collection.output: {{ coll_now.output }}</p>
+  {% for doc_now in coll_now.docs %}
+    <p>document: <tt>{{ doc_now.path }}</tt></p>
+  {% endfor %}
+  {% for file_now in coll_now.files %}
+    <p>file: <tt>{{ file_now.path }}</tt></p>
+  {% endfor %}
+{% endfor %}
+
+{% for static_file in site.static_files %}
+  <p>static file: <tt>{{ static_file.path }}</tt></p>
+{% endfor %}
+{% endif %}
+
+{% if include_optional_result %}
+  {% comment %}see: http://jekyllrb.com/docs/templates/#includes{% endcomment %}
+  {% include {{ l_include_optional_relpath }} %}
+{% endif %}
+
