@@ -1,14 +1,11 @@
+{% include JB/include_module_optional module="JB/comments" path="begin_uncond" %}
+
 {% if site.JB.comments.provider and page.comments != false %}
+{% include JB/include_module_optional module="JB/comments" path="begin_enabled" %}
 
 {% comment %}
-  TODO: do per-module "pre" and "post" includes so that most/every generic module can include files at the right moment
+  TODO: remove all instances of jb_module_comments_debug_enabled, and move those to optional includes, if necessary
 {% endcomment %}
-{% include local/debug_messages.html %}
-
-{% if jb_module_debug_messages_enabled %}
-  {% assign jb_module_comments_debug_enabled = true %}
-{% endif %}
-
 {% if jb_module_comments_debug_enabled %}
   <h2>JB/comments debug messages</h2>
 
@@ -140,4 +137,6 @@
   {% include custom/comments %}
 {% endcase %}
 
+{% include JB/include_module_optional module="JB/comments" path="end_enabled" %}
 {% endif %}
+{% include JB/include_module_optional module="JB/comments" path="end_uncond" %}
