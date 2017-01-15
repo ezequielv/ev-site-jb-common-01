@@ -142,6 +142,21 @@ JB :
   #   ./_includes/custom/[HELPER]
   # where [HELPER] is the name of the helper you are overriding.
 
+  # _includes/JB/include_module_optional support
+  include_module_optional :
+    #+ debug : true
+    include_definitions :
+      group_0 :
+        -
+          module : "JB/some_other_module_1"
+          includes : ["some_include_file_1", "some_include_file_2"]
+        -
+          module : "JB/comments"
+          includes : ["begin_enabled"]
+        -
+          module : "JB/some_other_module_2"
+          includes : ["some_include_file_1", "some_include_file_2"]
+
 # see also: https://jekyllrb.com/docs/configuration/#front-matter-defaults
 defaults :
   -
