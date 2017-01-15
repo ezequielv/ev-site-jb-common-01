@@ -12,3 +12,4 @@ Thumbs.db
 Gemfile.lock
 # [ezequielv] not sure about this one
 .jekyll-metadata
+lftp-*-local.cfg
