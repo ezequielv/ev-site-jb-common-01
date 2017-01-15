@@ -1,0 +1,82 @@
+{% comment %}
+
+  Enabling/exposing a module-optional include file:
+
+    In order to enable an module optional include, you need to create a (TODO: continue)
+    in your configuration file ('_config.yml' by default)  (TODO: continue)
+
+      JB.include_module_optional.include_definitions :
+        -
+          module : {MODULE_INCLUDE_EXPR}
+          includes : [ {INCLUDE_FILE}, ... ]
+        -
+          module : {MODULE_INCLUDE_EXPR}
+          includes : [ {INCLUDE_FILE}, ... ]
+
+    or the same entries under a 0-based "group_{N}" key under 'JB.include_module_optional.include_definitions':
+
+      JB.include_module_optional.include_definitions :
+        group_0 :
+          -
+            module : {MODULE_INCLUDE_EXPR}
+            includes : [ {INCLUDE_FILE}, ... ]
+          -
+            module : {MODULE_INCLUDE_EXPR}
+            includes : [ {INCLUDE_FILE}, ... ]
+        group_1 :
+          -
+            module : {MODULE_INCLUDE_EXPR}
+            includes : [ {INCLUDE_FILE}, ... ]
+          -
+            module : {MODULE_INCLUDE_EXPR}
+            includes : [ {INCLUDE_FILE}, ... ]
+
+    The above would easily accommodate multiple configuration files:
+    
+      $ jekyll build --config _config.yml,YOUR_OTHER_CONFIG_FILE.yml
+
+    Example configuration file excerpt:
+
+      # the following enables the use of an optional include file
+      # for the include "JB/comments", for an INCLUDE_FILE = "beg_uncond".
+      # TODO: copy from _config.yml
+
+  Module writers usage:
+
+    {% include JB/include_module_optional module="MODULE_INCLUDE_EXPR" path="INCLUDE_FILE" %}
+
+  Example for the "JB/comments" module:
+
+    # from _includes/JB/comments
+    {% include JB/include_module_optional module="JB/comments" path="beg_uncond" %}
+
+
+  TODO: come up wiht a default for CONFIGURABLE_SUBDIR_FOR_CONDITIONAL_INCLUDES
+
+  The constructed path to be included is:
+
+    {STANDARD_INCLUDE_PATH_PREFIX}/{CONFIGURABLE_SUBDIR_FOR_CONDITIONAL_INCLUDES}/{{ include.module }}/{{ include.path }}
+
+  That is, as the the default for {STANDARD_INCLUDE_PATH_PREFIX} is
+  '_includes', the path becomes
+
+    _includes/{CONFIGURABLE_SUBDIR_FOR_CONDITIONAL_INCLUDES}/{{ include.module }}/{{ include.path }}
+
+{% endcomment %}
+
+{% assign jb_include_module_optional_debug = site.JB.include_module_optional.debug %}
+
+{% if jb_include_module_optional_debug %}
+  <p>DEBUG: site.JB.include_module_optional.include_definitions.group_0[0].module: {{ site.JB.include_module_optional.include_definitions.group_0[0].module }};</p>
+{% endif %}
+
+{% assign jb_include_module_optional_process_group_result = nil %}
+{% include JB/include_module_optional-process_group result_last=jb_include_module_optional_process_group_result module=include.module path=include.path list=site.JB.include_module_optional.include_definitions %}
+{% include JB/include_module_optional-process_group result_last=jb_include_module_optional_process_group_result module=include.module path=include.path list=site.JB.include_module_optional.include_definitions.group_0 %}
+{% include JB/include_module_optional-process_group result_last=jb_include_module_optional_process_group_result module=include.module path=include.path list=site.JB.include_module_optional.include_definitions.group_1 %}
+
+{% if jb_include_module_optional_process_group_result %}
+  {% comment %}{% include HELLO_NONEXISTING_FILE %}{% endcomment %}
+  {% include {{ jb_include_module_optional_process_group_result }} %}
+{% endif %}
+

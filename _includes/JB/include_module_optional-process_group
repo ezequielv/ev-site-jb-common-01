@@ -1,0 +1,41 @@
+{% comment %}
+  To be included from JB/include_module_optional only
+
+  input args:
+    list : array of hashes
+    module : string describing the module id (usually its include path)
+    path : the path of the file that we'd like to conditionally include
+    result_last (optional): the last value of the variable jb_include_module_optional_process_group_result, if any (can be nil)
+
+  output variables:
+    jb_include_module_optional_process_group_result: nil or the completely constructed path of the file to {% include %}
+{% endcomment %}
+
+{% if jb_include_module_optional_debug %}
+  <p>DEBUG: include_module_optional-process_group: include.list: {{ include.list | join: "," }}; include.module: {{ include.module }}; include.path: {{ include.path }}; include.result_last: {{ include.result_last }}</p>
+{% endif %}
+
+{% if include.result_last %}
+  {% assign jb_include_module_optional_process_group_result = include.result_last %}
+{% else %}
+  {% assign jb_include_module_optional_process_group_result = nil %}
+  {% for l_include_module_optional_process_group_group_now in include.list %}
+    {% if jb_include_module_optional_debug %}
+      <p>DEBUG: l_include_module_optional_process_group_group_now: {{ l_include_module_optional_process_group_group_now }}</p>
+    {% endif %}
+    {% if l_include_module_optional_process_group_group_now.module != include.module %}
+      {% continue %}
+    {% endif %}
+    {% for l_include_module_optional_process_group_include_now in l_include_module_optional_process_group_group_now.includes %}
+      {% if jb_include_module_optional_debug %}
+        <p>DEBUG: l_include_module_optional_process_group_include_now: {{ l_include_module_optional_process_group_include_now }}</p>
+      {% endif %}
+      {% if l_include_module_optional_process_group_include_now != include.path %}
+        {% continue %}
+      {% endif %}
+      {% capture jb_include_module_optional_process_group_result %}{{ site.JB.include_module_optional.base_path | default: "optional" | append: "/" | replace: "//", "/" }}{{ include.module }}/{{ include.path }}{% endcapture %}
+      {% if jb_include_module_optional_process_group_result %}{% break %}{% endif %}
+    {% endfor %}
+    {% if jb_include_module_optional_process_group_result %}{% break %}{% endif %}
+  {% endfor %}
+{% endif %}
