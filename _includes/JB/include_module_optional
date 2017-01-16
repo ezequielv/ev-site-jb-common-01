@@ -1,3 +1,4 @@
+{% capture jbcache %}
 {% comment %}
 
   Enabling/exposing a module-optional include file:
@@ -63,6 +64,7 @@
     _includes/{CONFIGURABLE_SUBDIR_FOR_CONDITIONAL_INCLUDES}/{{ include.module }}/{{ include.path }}
 
 {% endcomment %}
+{% endcapture %}{% assign jbcache = nil %}
 
 {% assign jb_include_module_optional_debug = site.JB.include_module_optional.debug %}
 
