@@ -9,3 +9,9 @@
   {% assign jb_module_comments_debug_enabled = true %}
 {% endif %}
 
+{% if jb_module_comments_debug_enabled %}
+  <h2>JB/comments debug messages</h2>
+
+  <ul>
+{% endif %}
+
