@@ -7,16 +7,9 @@
   {% if page.comments_var_id_ident_method and page.comments_var_id_ident_method != "none" %}
     {% comment %}assign to l_ident_stages an array with the top-level ids taken from the page front matter{% endcomment %}
     {% assign l_ident_stages = page.comments_var_id_ident_method %}
-    {% if jb_module_comments_debug_enabled %}
-      <li>l_ident_stages: {{ l_ident_stages | join: ", " }};</li>
-    {% endif %}
 
     {% capture l_ident_stages_string %}:edge_delim:{{ l_ident_stages | join: ":" }}:edge_delim:{% endcapture %}
     {% assign l_ident_stages_inner_list = "auto:ident:pageid:relurl" | split: ":" %}
-
-    {% if jb_module_comments_debug_enabled %}
-      <li>l_ident_stages_string (for replacements): {{ l_ident_stages_string }};</li>
-    {% endif %}
 
     {% assign l_ident_stages_string_last = l_ident_stages_string %}
     {% for l_i in (1..100) %}
@@ -44,16 +37,7 @@
 
     {% assign l_ident_stages = l_ident_stages_string | replace: ":edge_delim:", "" | split: ":" %}
 
-    {% if jb_module_comments_debug_enabled %}
-      <li>l_ident_stages_string (replaced): {{ l_ident_stages_string }};</li>
-      <li>l_ident_stages (replaced, list): {{ l_ident_stages | join: ", " }};</li>
-    {% endif %}
-
     {% for l_ident_stage_now in l_ident_stages %}
-      {% if jb_module_comments_debug_enabled %}
-        <li>l_ident_stage_now: {{ l_ident_stage_now }};</li>
-      {% endif %}
-
       {% if jb_comment_id and jb_comment_id.size > 0 %}
         {% break %}
       {% endif %}
