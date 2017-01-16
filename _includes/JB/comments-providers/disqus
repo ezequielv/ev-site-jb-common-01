@@ -6,11 +6,8 @@
 
     var disqus_shortname = '{{ site.JB.comments.disqus.short_name }}'; // required: replace example with your forum shortname
 
-    {% comment %}
-      {% if page.wordpress_id %}var disqus_identifier = '{{page.wordpress_id}} {{site.production_url}}/?p={{page.wordpress_id}}';{% endif %}
-    {% endcomment %}
-
 // based on code available at https://{{ site.JB.comments.disqus.short_name }}.disqus.com/admin/install/platforms/universalcode/
+// see also: https://help.disqus.com/customer/portal/articles/472098-javascript-configuration-variables
 /**
  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
