@@ -2,7 +2,7 @@
 
 {% if site.JB.comments.provider and page.comments != false %}
 {% include JB/include_module_optional module="JB/comments" path="begin_enabled" %}
-
+{% capture jbcache %}
 {% unless jb_comment_id %}
   {% if page.comments_var_id_ident_method and page.comments_var_id_ident_method != "none" %}
     {% comment %}assign to l_ident_stages an array with the top-level ids taken from the page front matter{% endcomment %}
@@ -74,6 +74,7 @@
   {% endunless %}
   {% assign jb_comment_url = jb_comment_url | default: nil %}
 {% endif %}
+{% endcapture %}{% assign jbcache = nil %}
 
 {% include JB/include_module_optional module="JB/comments" path="mid_beforeprovider" %}
 
