@@ -32,20 +32,22 @@
 {% endif %}
 
 {% comment %}
-  ezequielv: added support for a custom yaml config option
-  (currently in file _config_build_github.yml):
+  The 'JB.deployment_type' config option has been added to aid in maintaining
+  code that depends on the kind of hosting the site will have.
 
-  ==[ _config_build_github.yml ]==
-  JB:
-    deployment_type: github
-  ==[ end ]==
+  Example:
 
-  Then build the site like this:
+    ==[ _config_build_github.yml ]==
+    JB:
+      deployment_type: github
+    ==[ end ]==
 
-    $ bundle exec jekyll build --config _config.yml,_config_build_github.yml --safe
+    Then build the site like this:
+
+      $ bundle exec jekyll build --config _config.yml,_config_build_github.yml --safe
 
 {% endcomment %}
-{% if site.JB.deployment_type and site.JB.deployment_type != "" %}
+{% if site.JB.deployment_type and site.JB.deployment_type.size > 0 %}
   {% assign is_production = true %}
   {% assign jb_prod_env = site.JB.deployment_type %}
 {% endif %}
