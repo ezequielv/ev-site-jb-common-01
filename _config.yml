@@ -152,7 +152,7 @@ JB :
           includes : ["some_include_file_1", "some_include_file_2"]
         -
           module : "JB/comments"
-          includes : ["begin_enabled"]
+          includes : ["begin_enabled", "mid_beforeprovider"]
         -
           module : "JB/some_other_module_2"
           includes : ["some_include_file_1", "some_include_file_2"]

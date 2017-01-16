@@ -1,0 +1,7 @@
+{% if jb_module_comments_debug_enabled %}
+    <li>jb_site_url: {{ jb_site_url }};</li>
+    <li>jb_comment_id: {{ jb_comment_id }};</li>
+    <li>jb_comment_url: {{ jb_comment_url }};</li>
+  </ul>
+{% endif %}
+
