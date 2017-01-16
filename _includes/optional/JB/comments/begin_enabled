@@ -1,10 +1,5 @@
 {% include local/debug_messages.html %}
 
-{% comment %}
-  TODO: do per-module "pre" and "post" includes so that most/every generic module can include files at the right moment
-{% endcomment %}
-{% include local/debug_messages.html %}
-
 {% if jb_module_debug_messages_enabled %}
   {% assign jb_module_comments_debug_enabled = true %}
 {% endif %}
