@@ -3,31 +3,10 @@
 {% if site.JB.comments.provider and page.comments != false %}
 {% include JB/include_module_optional module="JB/comments" path="begin_enabled" %}
 
-{% comment %}
-  TODO: remove all instances of jb_module_comments_debug_enabled, and move those to optional includes, if necessary
-{% endcomment %}
-{% if jb_module_comments_debug_enabled %}
-  <h2>JB/comments debug messages</h2>
-
-  <ul>
-{% endif %}
-
-{% if jb_comment_id %}
-{% else %}
+{% unless jb_comment_id %}
   {% if page.comments_var_id_ident_method and page.comments_var_id_ident_method != "none" %}
-
-    {% comment %}
-      TODO: a single string is treated like an array, in terms of 'for' loops, so we can always either:
-        - use the source variable as it was;
-        - just assign it to the 'dest' variable -- no need for the "split with impossible separator" trick.
-    {% endcomment %}
     {% comment %}assign to l_ident_stages an array with the top-level ids taken from the page front matter{% endcomment %}
-    {% if page.comments_var_id_ident_method[0] %}
-      {% assign l_ident_stages = page.comments_var_id_ident_method %}
-    {% else %}
-      {% comment %} transform: string =] list{% endcomment %}
-      {% assign l_ident_stages = page.comments_var_id_ident_method | split: "--impossible-separator--" %}
-    {% endif %}
+    {% assign l_ident_stages = page.comments_var_id_ident_method %}
     {% if jb_module_comments_debug_enabled %}
       <li>l_ident_stages: {{ l_ident_stages | join: ", " }};</li>
     {% endif %}
@@ -90,37 +69,29 @@
       {% endcase %}
     {% endfor %}
 
-    {% if jb_comment_id and jb_comment_id.size > 0 %}
-    {% else %}
+    {% unless jb_comment_id and jb_comment_id.size > 0 %}
       {% assign jb_comment_id = nil %}
-    {% endif %}
+    {% endunless %}
   {% endif %}
-{% endif %}
+{% endunless %}
 
 {% if page.comments_var_url_enable %}
-  {% if jb_comment_url %}
-  {% else %}
-    {% if jb_site_url %}
-    {% else %}
+  {% unless jb_comment_url %}
+    {% unless jb_site_url %}
       {% if site.production_url and site.production_url.size > 0 %}
         {% assign jb_site_url = site.production_url %}
       {% endif %}
-    {% endif %}
+    {% endunless %}
     {% assign jb_site_url = jb_site_url | default: nil %}
 
     {% if jb_site_url %}
       {% capture jb_comment_url %}{{ jb_site_url }}{{ page.url }}{% endcapture %}
     {% endif %}
-  {% endif %}
+  {% endunless %}
   {% assign jb_comment_url = jb_comment_url | default: nil %}
 {% endif %}
 
-{% if jb_module_comments_debug_enabled %}
-    <li>jb_site_url: {{ jb_site_url }};</li>
-    <li>jb_comment_id: {{ jb_comment_id }};</li>
-    <li>jb_comment_url: {{ jb_comment_url }};</li>
-  </ul>
-{% endif %}
+{% include JB/include_module_optional module="JB/comments" path="mid_beforeprovider" %}
 
 {% case site.JB.comments.provider %}
 {% when "disqus" %}
