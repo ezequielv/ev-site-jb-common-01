@@ -179,6 +179,11 @@ defaults :
       # This sets the variable jb_comment_url
       # possible values: falsy (nil, false, unset), truthy (anything else);
       comments_var_url_enable : true
+      # If set, comments are only shown when the "production" mode has the specified value:
+      #   - "prod": production only;
+      #   - "dev": development only;
+      #   - "any" (default): always enabled;
+      comments_on_mode : prod
   # values for jekyll-based site generation (where the suffix is not needed)
   # note: github works well with this
   # unchanged: -
