@@ -4,10 +4,13 @@ category : lessons
 tagline: "Supporting tagline"
 tags : [intro, beginner, jekyll, tutorial]
 debug_content: "forced"
-comments_on_mode : any
+comments_config :
+  on_mode : any
+subkey :
+  some_other_property_in_frontmatter : hello
 # [ezequielv] test: comment_id: my_comment_id_for_jekyll_introduction
 # [ezequielv] test: id: my_page_id_for_jekyll_introduction
-# [ezequielv] test: comments_var_id_ident_method : [relurl, pageid, commentid]
+# [ezequielv] test: comments.var_id_ident_method : [relurl, pageid, commentid]
 ---
 {% include JB/setup %}
 
@@ -415,3 +418,12 @@ Jekyll-bootstrap is intended to provide helper methods and strategies aimed at m
 
 Please take a look at [{{ site.categories.api.first.title }}]({{ BASE_PATH }}{{ site.categories.api.first.url }})
 or jump right into [Usage]({{ BASE_PATH }}{{ site.categories.usage.first.url }}) if you'd like.
+
+
+
+## Some testing debug info
+
+* `page.subkey.some_other_property_in_frontmatter`: `{{ page.subkey.some_other_property_in_frontmatter }}`;
+* `page.subkey.value_string`: `{{ page.subkey.value_string }}`;
+* `page.subkey.value_array`: `{{ page.subkey.value_array | join: ', ' }}`;
+

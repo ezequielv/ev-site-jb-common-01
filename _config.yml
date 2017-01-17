@@ -163,27 +163,31 @@ defaults :
     scope :
       path : ""
     values :
-      # This sets the variable jb_comment_id
-      # type:
-      #   - string with an id from the list below; or
-      #   - list of strings, where each string is an id from the list below;
-      #
-      # supported ids:
-      #  - "none", nil or unset: leave unset;
-      #  - "auto": try to use, in order: "ident", "relurl"
-      #  - "ident": identifiers only: try to use, in order: "commentid", "pageid"
-      #  - "commentid": use 'page.comment_id';
-      #  - "pageid": use 'page.id';
-      #  - "relurl": relative url ('page.url') (does not include BASE_PATH);
-      comments_var_id_ident_method : auto
-      # This sets the variable jb_comment_url
-      # possible values: falsy (nil, false, unset), truthy (anything else);
-      comments_var_url_enable : true
-      # If set, comments are only shown when the "production" mode has the specified value:
-      #   - "prod": production only;
-      #   - "dev": development only;
-      #   - "any" (default): always enabled;
-      comments_on_mode : prod
+      comments_config :
+        # This sets the variable jb_comment_id
+        # type:
+        #   - string with an id from the list below; or
+        #   - list of strings, where each string is an id from the list below;
+        #
+        # supported ids:
+        #  - "none", nil or unset: leave unset;
+        #  - "auto": try to use, in order: "ident", "relurl"
+        #  - "ident": identifiers only: try to use, in order: "commentid", "pageid"
+        #  - "commentid": use 'page.comment_id';
+        #  - "pageid": use 'page.id';
+        #  - "relurl": relative url ('page.url') (does not include BASE_PATH);
+        var_id_ident_method : auto
+        # This sets the variable jb_comment_url
+        # possible values: falsy (nil, false, unset), truthy (anything else);
+        var_url_enable : true
+        # If set, comments are only shown when the "production" mode has the specified value:
+        #   - "prod": production only;
+        #   - "dev": development only;
+        #   - "any" (default): always enabled;
+        on_mode : prod
+      subkey :
+        value_string : string_value
+        value_array : ["array_item_1", "array_item_2"]
   # values for jekyll-based site generation (where the suffix is not needed)
   # note: github works well with this
   # unchanged: -

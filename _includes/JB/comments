@@ -1,25 +1,25 @@
 {% include JB/include_module_optional module="JB/comments" path="begin_uncond" %}
 
-{% assign jb_comments_enabled_prod_mode = jb_comments_enabled_prod_mode | default: page.comments_on_mode %}
-{% assign jb_comments_enabled_flag = false %}
+{% assign jb_comments_enabled_prod_mode = jb_comments_enabled_prod_mode | default: page.comments_config.on_mode %}
+{% assign jb_comments_enabled_flag = true %}
 {% case jb_comments_enabled_prod_mode %}
 {% when "prod" %}
   {% assign jb_comments_enabled_flag = is_production %}
 {% when "dev" %}
-  {% unless is_production %}
-    {% assign jb_comments_enabled_flag = true %}
-  {% endunless %}
+  {% if is_production %}
+    {% assign jb_comments_enabled_flag = false %}
+  {% endif %}
 {% when "any" %}
-  {% assign jb_comments_enabled_flag = true %}
+  {% comment %} leave the 'true' value in there {% endcomment %}
 {% endcase %}
 
 {% if site.JB.comments.provider and page.comments != false and jb_comments_enabled_flag %}
 {% include JB/include_module_optional module="JB/comments" path="begin_enabled" %}
 {% capture jbcache %}
 {% unless jb_comment_id %}
-  {% if page.comments_var_id_ident_method and page.comments_var_id_ident_method != "none" %}
+  {% if page.comments_config.var_id_ident_method and page.comments_config.var_id_ident_method != "none" %}
     {% comment %}assign to l_ident_stages an array with the top-level ids taken from the page front matter{% endcomment %}
-    {% assign l_ident_stages = page.comments_var_id_ident_method %}
+    {% assign l_ident_stages = page.comments_config.var_id_ident_method %}
 
     {% capture l_ident_stages_string %}:edge_delim:{{ l_ident_stages | join: ":" }}:edge_delim:{% endcapture %}
     {% assign l_ident_stages_inner_list = "auto:ident:pageid:relurl" | split: ":" %}
@@ -72,7 +72,7 @@
   {% endif %}
 {% endunless %}
 
-{% if page.comments_var_url_enable %}
+{% if page.comments_config.var_url_enable %}
   {% unless jb_comment_url %}
     {% unless jb_site_url %}
       {% if site.production_url and site.production_url.size > 0 %}
