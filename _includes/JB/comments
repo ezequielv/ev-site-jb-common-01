@@ -1,6 +1,19 @@
 {% include JB/include_module_optional module="JB/comments" path="begin_uncond" %}
 
-{% if site.JB.comments.provider and page.comments != false %}
+{% assign jb_comments_enabled_prod_mode = jb_comments_enabled_prod_mode | default: page.comments_on_mode %}
+{% assign jb_comments_enabled_flag = false %}
+{% case jb_comments_enabled_prod_mode %}
+{% when "prod" %}
+  {% assign jb_comments_enabled_flag = is_production %}
+{% when "dev" %}
+  {% unless is_production %}
+    {% assign jb_comments_enabled_flag = true %}
+  {% endunless %}
+{% when "any" %}
+  {% assign jb_comments_enabled_flag = true %}
+{% endcase %}
+
+{% if site.JB.comments.provider and page.comments != false and jb_comments_enabled_flag %}
 {% include JB/include_module_optional module="JB/comments" path="begin_enabled" %}
 {% capture jbcache %}
 {% unless jb_comment_id %}
