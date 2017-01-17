@@ -3,16 +3,18 @@ layout: post
 category : lessons
 tagline: "Supporting tagline"
 tags : [intro, beginner, jekyll, tutorial]
-debug_content: "forced"
-comments_config :
-  on_mode : any
-subkey :
-  some_other_property_in_frontmatter : hello
+local_config :
+  debug_content: "forced"
+#+ comments_config :
+#+   on_prod_mode : prod
+# [test] test_subkey :
+# [test]   some_other_property_in_frontmatter : hello
 # [ezequielv] test: comment_id: my_comment_id_for_jekyll_introduction
 # [ezequielv] test: id: my_page_id_for_jekyll_introduction
 # [ezequielv] test: comments.var_id_ident_method : [relurl, pageid, commentid]
 ---
 {% include JB/setup %}
+{% include local/setup_debug_content %}
 
 This Jekyll introduction will outline specifically  what Jekyll is and why you would want to use it.
 Directly following the intro we'll learn exactly _how_ Jekyll does what it does.
@@ -419,11 +421,14 @@ Jekyll-bootstrap is intended to provide helper methods and strategies aimed at m
 Please take a look at [{{ site.categories.api.first.title }}]({{ BASE_PATH }}{{ site.categories.api.first.url }})
 or jump right into [Usage]({{ BASE_PATH }}{{ site.categories.usage.first.url }}) if you'd like.
 
-
+{% comment %} cheaper way to detect whether the namespace is there: { % if jb_module_debug_messages_enabled and page.test_subkey % } {% endcomment %}
+{% comment %} longer, safer condition: { % if page.test_subkey.some_other_property_in_frontmatter or page.test_subkey.value_string or page.test_subkey.value_array % } {% endcomment %}
+{% if jb_module_debug_messages_enabled and page.test_subkey %}
 
 ## Some testing debug info
 
-* `page.subkey.some_other_property_in_frontmatter`: `{{ page.subkey.some_other_property_in_frontmatter }}`;
-* `page.subkey.value_string`: `{{ page.subkey.value_string }}`;
-* `page.subkey.value_array`: `{{ page.subkey.value_array | join: ', ' }}`;
+* `page.test_subkey.some_other_property_in_frontmatter`: `{{ page.test_subkey.some_other_property_in_frontmatter | default: "(empty/unset)" }}`;
+* `page.test_subkey.value_string`: `{{ page.test_subkey.value_string | default: "(empty/unset)" }}`;
+* `page.test_subkey.value_array`: `{{ page.test_subkey.value_array | join: ', ' | default: "(empty/unset)" }}`;
 
+{% endif %}
