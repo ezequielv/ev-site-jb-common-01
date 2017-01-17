@@ -184,8 +184,8 @@ defaults :
         #   - "prod": production only;
         #   - "dev": development only;
         #   - "any" (default): always enabled;
-        on_mode : prod
-      subkey :
+        on_prod_mode : prod
+      test_subkey :
         value_string : string_value
         value_array : ["array_item_1", "array_item_2"]
   # values for jekyll-based site generation (where the suffix is not needed)

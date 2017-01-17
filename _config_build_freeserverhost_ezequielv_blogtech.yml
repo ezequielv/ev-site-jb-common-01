@@ -19,7 +19,7 @@ defaults :
       comments_config :
         var_id_ident_method : auto
         var_url_enable : true
-        on_mode : prod
+        on_prod_mode : prod
   # }}} copied from '_config.yml'
   #
   # [ezequielv] based on https://github.com/jekyll/jekyll/issues/4145#issuecomment-158140960 {{{
