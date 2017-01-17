@@ -1,0 +1,12 @@
+{% include JB/setup %}
+{% capture jbcache %}
+{% if page.local_config.debug_content %}
+  {% if page.local_config.debug_content == "dev" or page.local_config.debug_content == "auto" or page.local_config.debug_content == "default" %}
+    {% if is_production != true %}
+      {% assign jb_module_debug_messages_enabled = true %}
+    {% endif %}
+  {% elsif page.local_config.debug_content == true or page.local_config.debug_content == "forced" %}
+    {% assign jb_module_debug_messages_enabled = true %}
+  {% endif %}
+{% endif %}
+{% endcapture %}{% assign jbcache = nil %}
