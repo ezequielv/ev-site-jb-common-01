@@ -80,7 +80,9 @@ author :
 # Finally if you are pushing to a GitHub project page, include the project name at the end.
 #
 #production_url : http://username.github.io
-production_url : https://ezequielv.github.io/blog-tech
+# 2020.12.04: testing CNAME support now: #+ production_url : https://ezequielv.github.io/blog-tech
+#+? production_url : https://www1.jev.me.uk
+production_url : https://blog-b1.jev.me.uk
 
 gems: ["jekyll-sitemap"]
 
@@ -113,7 +115,8 @@ JB :
   #     This means always setting the protocol (http|https) or prefixing with "/"
   #BASE_PATH : false
   # [ezequielv] github pages: BASE_PATH : https://ezequielv.github.io/blog-tech
-  BASE_PATH : /blog-tech
+  # 2020.12.04: testing CNAME support now: BASE_PATH : /blog-tech
+  BASE_PATH : ""
 
   # By default, the asset_path is automatically defined relative to BASE_PATH plus the enabled theme.
   # ex: [BASE_PATH]/assets/themes/[THEME-NAME]
