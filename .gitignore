@@ -9,6 +9,10 @@ Thumbs.db
 .rbenv-version
 .rvmrc
 
+# [ezequielv] own local symlinks/files, etc.
+.local
+.local[-_]*
+
 Gemfile.lock
 # [ezequielv] not sure about this one
 .jekyll-metadata
