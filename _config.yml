@@ -3,7 +3,57 @@
 # prev: # For more see: http://jekyllrb.com/docs/permalinks/
 # prev: permalink: /:categories/:year/:month/:day/:title
 
-exclude: [".rvmrc", ".rbenv-version", "README.md", "Rakefile", "changelog.md", "lftp-*.cfg"]
+#+? exclude: [".rvmrc", ".rbenv-version", "README.md", "Rakefile", "changelog.md", "lftp-*.cfg", "modules", "modules/pub", "common", "common/src"]
+exclude:
+  - ".rvmrc"
+  - ".rbenv-version"
+  - ".local[-_]*"
+  - "lftp-*.cfg"
+  # this is a directory
+  #? NOTE: error when serving '/index.html':
+  #?  ref: [2020-06-03 00:22:59] ERROR `/images/bgs/body.png' not found.
+  #? - "local/"
+  - "local/"
+  # standard jekyll/JB components
+  - "Gemfile"
+  - "Gemfile.lock"
+  - "README.md"
+  - "Rakefile"
+  - "changelog.md"
+  - "modules"
+  #+ not_needed: - "modules/pub"
+  - "common"
+  #+ not_needed: - "common/src"
+  - "tags.temp"
+  - "tags.lock"
+
+# NOTE: implemented by '{common}/_plugins/jekyll-watcher-override.rb'
+exclude_from_watch:
+  #? # NOTE: removed: we don't want the 'tags' source page to not be watched.
+  #? # - tags
+  #? - "tags.temp"
+  #? - "tags.lock"
+  # NOTE: decided to leave this entry, as I don't like the unnecessary regeneration messages
+  #  (and the 'tags' page does not change often/at all)
+  - tags
+  #? - modules/
+  #? - common/
+  #? - common/root
+  #? - common/src
+  #? - common/src/
+  #? - modules/
+  #? - modules/pub/
+  #? - modules/pub/ev-site-jb-common-01
+  #? - common/src/jb-common-01/
+  #? - common/src/jb-common-01/_plugins
+  #? - common/src/jb-common-01/_posts
+  #? - common/src/jb-common-01/_posts/core-samples
+  #? - _posts/core-samples/
+  #? - _plugins/
+  #? - common/root/_plugins/
+  #? - modules/pub/ev-site-jb-common-01/
+  #? - modules/pub/ev-site-jb-common-01/_plugins/
+
 # [ezequielv] not supported: highlighter: pygments
 #  see: https://help.github.com/articles/page-build-failed-config-file-error/#fixing-highlighting-errors
 #  see: https://help.github.com/articles/troubleshooting-jekyll-builds
