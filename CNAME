@@ -1,0 +1,6 @@
+---
+# NOTE: having an empty front matter seems to be needed to make this file a
+# candidate to be processed (the detection should work, as this is clearly a
+# "liquid" script) as a "liquid" script.
+---
+{% if site.JB.cname %}{{ site.JB.cname }}{% endif %}
