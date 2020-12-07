@@ -84,7 +84,13 @@ author :
 #+? production_url : https://www1.jev.me.uk
 production_url : https://blog-b1.jev.me.uk
 
-gems: ["jekyll-sitemap"]
+# NOTE: ref: https://github.com/philnash/jekyll-gzip#installation
+#  plugins:
+#    - jekyll-gzip
+#+ prev: v1: gems: ["jekyll-sitemap"]
+gems:
+  - "jekyll-sitemap"
+  - "jekyll-gzip"
 
 # All Jekyll-Bootstrap specific configurations are namespaced into this hash
 #
