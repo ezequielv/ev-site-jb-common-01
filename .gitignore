@@ -16,4 +16,8 @@ Thumbs.db
 Gemfile.lock
 # [ezequielv] not sure about this one
 .jekyll-metadata
-lftp-*-local.cfg
+
+# these 'lftp' config files should not be committed to a git repository from
+# the root directory.
+/lftp[-_]*.cfg*
+
