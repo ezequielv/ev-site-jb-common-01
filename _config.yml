@@ -94,7 +94,9 @@ production_url : https://blog-b1.jev.me.uk
 #  plugins:
 #    - jekyll-gzip
 #+ prev: v1: gems: ["jekyll-sitemap"]
-gems:
+# 2020.12.09: Deprecation: The 'gems' configuration option has been renamed to 'plugins'. Please update your config file accordingly.
+# 2020.12.09: gems:
+plugins:
   - "jekyll-sitemap"
   - "jekyll-gzip"
 
