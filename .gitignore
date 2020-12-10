@@ -16,6 +16,9 @@ Thumbs.db
 # track 'localrc.vim' plugin-related (user) files
 !.local*.vimrc
 
+# renamed (gutentags (vim)) "exuberant ctags" output files
+ctags_tags*
+
 Gemfile.lock
 
 .jekyll-metadata
