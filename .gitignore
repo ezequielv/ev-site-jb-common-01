@@ -13,6 +13,9 @@ Thumbs.db
 .local
 .local[-_]*
 
+# track 'localrc.vim' plugin-related (user) files
+!.local*.vimrc
+
 Gemfile.lock
 
 .jekyll-metadata
