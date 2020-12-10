@@ -255,18 +255,20 @@ defaults :
       test_subkey :
         value_string : string_value
         value_array : ["array_item_1", "array_item_2"]
-  # values for jekyll-based site generation (where the suffix is not needed)
-  # note: github works well with this
-  # unchanged: -
-  # unchanged:   scope:
-  # unchanged:     type: pages
-  # unchanged:   values:
-  # unchanged:     # idea: use extension: permalink: /:path/:basename:output_ext
-  # unchanged:     permalink: /:path/:basename
+  # note: github now published as static pages (not using configuration-less site building)
+  # [ezequielv] based on https://github.com/jekyll/jekyll/issues/4145#issuecomment-158140960 {{{
+  # values for "dumb" site hosting (where the suffix are needed)
+  # note: [*.]freeserverhost.com works well with this
+  -
+    scope:
+      type: pages
+    values:
+      permalink: /:path/:basename:output_ext
   -
     scope:
       type: posts
     values:
       # idea: permalink: /:year/:month/:day/:title
-      permalink: /:categories/:year/:month/:day/:title
+      # 2020.12.09: (used when github built pages itself) permalink: /:categories/:year/:month/:day/:title
+      permalink: /:categories/:year/:month/:day/:title:output_ext
 
