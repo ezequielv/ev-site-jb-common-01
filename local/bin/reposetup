@@ -1,0 +1,336 @@
+#!/bin/sh
+set -e
+
+# TODO: move to a "common" functions script {{{
+g_prgname="${0##*/}"
+g_prgpath="${0%/*}" \
+	&& [ "${g_prgpath}" != "$0" ] \
+	|| g_prgpath="${PWD}"
+
+f_echo_to_stdout()
+{
+	echo "${g_prgname}:" "$@" 1>&2
+}
+
+f_info()
+{
+	f_echo_to_stdout "[info]" "$@"
+}
+
+f_error()
+{
+	f_echo_to_stdout "ERROR:" "$@"
+	return 1
+}
+
+f_abort()
+{
+	f_error "$@" "-- aborting" || exit $?
+}
+
+# defaults {{{
+unset \
+	g_dryrun_flag \
+	# end
+# }}}
+
+f_cmd_run()
+{
+	f_info "cmd_run: about to run${g_dryrun_flag:+ (dry run)}: '$*'"
+	[ -n "${g_dryrun_flag}" ] \
+		|| "$@"
+}
+
+# args: SRC DST
+f_cmd_ln_s()
+{
+	f_cmd_run ln -sv "$@"
+}
+
+f_ln_all_src_to_single_dst()
+{
+	local \
+		l_opt_onlysrcexisting=0 \
+		l_arg_full \
+		l_arg_key \
+		l_arg_val \
+		l_dst \
+		l_src_now \
+		l_rc \
+		# end
+
+	while [ $# -gt 0 ] ; do
+		l_arg_full="$1"
+		l_arg_key="${l_arg_full%%=*}"
+		l_arg_val="${l_arg_full#*=}"
+
+		case "${l_arg_key}" in
+			--only-src-existing )
+				l_opt_onlysrcexisting=1 ;;
+
+			-- )
+				shift
+				break
+				;;
+
+			-* )
+				f_error "f_ln_all_src_to_single_dst(): unrecognised/unsupported option: '${l_arg_full}'" \
+					|| return $?
+				;;
+
+			* )
+				break ;;
+		esac
+
+		shift
+	done
+
+	l_dst="$1"
+	[ -n "${l_dst}" ] \
+		|| f_error "f_ln_all_src_to_single_dst(): must specify a destination" \
+		|| return $?
+	shift
+
+	if [ ${l_opt_onlysrcexisting} -ne 0 ] ; then
+		l_rc=0
+		for l_src_now in "$@" ; do
+			[ -e "${l_src_now}" ] \
+				|| continue
+			f_cmd_ln_s "${l_src_now}" "${l_dst}" \
+				|| f_error "failed to symlink '${l_src_now}' -> '${l_dst}'. continuing src list processing." \
+				|| l_rc=$?
+		done
+		return ${l_rc}
+	else
+		f_cmd_ln_s "$@" "${l_dst}"
+		return $?
+	fi
+}
+
+f_cmd_git_gen()
+{
+	f_cmd_run git "$@"
+}
+
+# }}}
+
+# functions {{{
+f_setmode()
+{
+	local l_mode="${1}"
+	case "${l_mode}" in
+		prod | production | p | mode_prod )
+			g_mode_id='mode_prod'
+			g_site_defid='site_github'
+			;;
+		dev | development | d | mode_dev )
+			g_mode_id='mode_dev'
+			g_site_defid='site_dev'
+			;;
+		* )
+			f_error "setmode: unrecognised/unsupported mode value: '${l_mode}'" \
+				|| return $? ;;
+	esac
+}
+
+f_setsite()
+{
+	local l_site="${1}"
+	case "${l_site}" in
+		github | gh | site_github )
+			g_site_id='site_github'
+			g_mode_defid='mode_prod'
+			;;
+		dev | development | d | site_dev )
+			g_site_id='site_dev'
+			g_mode_defid='mode_dev'
+			;;
+		* )
+			f_error "setmode: unrecognised/unsupported site value: '${l_site}'" \
+				|| return $? ;;
+	esac
+}
+
+# args: HOOKS...
+# output: g_proc_hook_maps_out
+# warning: this is recursive (local variables)
+f_proc_hook_maps()
+{
+	local \
+		l_elems_src="$*" \
+		l_elems_out='' \
+		l_elem_now \
+		l_elem_dst_pre \
+		l_elem_dst_post \
+		# end
+
+	for l_elem_now in ${l_elems_src} ; do
+		l_elem_dst_pre=''
+		l_elem_dst_post=''
+
+		# NOTE: this could be customised by using an externally defined map, a "user" function, etc.
+		case "${l_elem_now}" in
+			post-checkout )
+				if [ "${g_site_id}" = 'site_dev' ] ; then
+					l_elem_dst_post="${l_elem_dst_post:+${l_elem_dst_post} }mod-pvt-all"
+				fi
+				;;
+
+			# MAYBE: only set up these mappings conditionally
+			#  IDEA: or just ignore these steps in non-"dev" environments
+			mod-pvt-all )
+				l_elem_dst_post='mod-pvt-checkout' ;;
+			mod-pvt-checkout )
+				l_elem_dst_post='mod-pvt-post-checkout' ;;
+			mod-pvt-post-checkout )
+				l_elem_dst_post='pvt-setup-all' ;;
+			pvt-setup-all )
+				l_elem_dst_post='pvt-setup-symlinks' ;;
+		esac
+
+		#? prev: v2: if [ -n "${l_elem_dst}" ] ; then
+		#? prev: v2: 	#-? ... # yes, we're using the same variable as the outer loop, as we don't need that former value anymore
+		#? prev: v2: 	#-? ... for l_elem_now in ${l_elem_dst} ; do
+		#? prev: v2: 	#-? ... 	f_proc_hook_maps 
+		#? prev: v2: 	#-? ... done
+		#? prev: v2: 	f_proc_hook_maps ${l_elem_dst} || return $?
+		#? prev: v2: 	l_elem_dst="${g_proc_hook_maps_out}"
+		#? prev: v2: else
+		#? prev: v2: 	l_elem_dst="${l_elem_now}"
+		#? prev: v2: fi
+		#? prev: v2: [ -n "${l_elem_dst}" ] \
+		#? prev: v2: 	&& l_elems_out="${l_elems_out:+${l_elems_out} }${l_elem_dst}"
+		if [ -n "${l_elem_dst_pre}" ] ; then
+			f_proc_hook_maps ${l_elem_dst_pre} || return $?
+			l_elem_dst_pre="${g_proc_hook_maps_out}"
+		fi
+		if [ -n "${l_elem_dst_post}" ] ; then
+			f_proc_hook_maps ${l_elem_dst_post} || return $?
+			l_elem_dst_post="${g_proc_hook_maps_out}"
+		fi
+
+		l_elems_out="${l_elems_out:+${l_elems_out} }${l_elem_dst_pre:+${l_elem_dst_pre} }${l_elem_now:+${l_elem_now} }${l_elem_dst_post}"
+	done
+
+	g_proc_hook_maps_out="${l_elems_out}"
+}
+
+f_proc_hook()
+{
+	local \
+		l_hooks \
+		l_hook_id \
+		# end
+
+	f_proc_hook_maps "$@" \
+		|| f_error "proc_hook: 'mapping' processing hooks list: '$*'" \
+		|| return $?
+	l_hooks="${g_proc_hook_maps_out}"
+
+	for l_hook_id in ${l_hooks} ; do
+		f_info "proc_hook: processing hook '${l_hook_id}' . . ."
+		case "${l_hook_id}" in
+			pvt-setup-symlinks )
+				# example:
+				#  .local-pvt-root -> modules/pvt/ev-site-blogtech-pvt-01
+				#  .local-pvt-cfg -> .local-pvt-root/maincfg
+				#  .local-pvt-dep -> .local-pvt-root/deploycfg
+				f_cmd_ln_s modules/pvt/ev-site-blogtech-pvt-01 .local-pvt-root \
+					&& f_cmd_ln_s .local-pvt-root/maincfg .local-pvt-cfg \
+					&& f_cmd_ln_s .local-pvt-root/deploycfg .local-pvt-dep \
+					|| return $?
+				t_srcdir='.local-pvt-dep'
+				#? prev: v1: if f_has_all_files "${t_srcdir}"/lftp[-_]* ; then
+				#? prev: v1: 	f_cmd_ln_s "${t_srcdir}"/lftp[-_]* .
+				#? prev: v1: fi
+				f_ln_all_src_to_single_dst --only-src-existing . "${t_srcdir}"/lftp[-_]* \
+					|| return $?
+				;;
+
+			mod-pvt-checkout )
+				f_cmd_git_gen submodule update --init --recursive modules/pvt/ \
+					|| return $?
+				;;
+
+			post-checkout | \
+			mod-pvt-all | \
+			mod-pvt-post-checkout | \
+			pvt-setup-all | \
+			null )
+				: ;;
+
+			* )
+				f_error "unsupported/unrecognised hook id: '${l_hook_id}'" \
+					|| return $?
+				;;
+		esac
+	done
+}
+
+# }}}
+
+# defaults {{{
+#-? (too much?) f_setmode dev
+unset \
+	g_site_id \
+	g_site_defid \
+	g_mode_id \
+	g_mode_defid \
+	# end
+g_mode_defid='dev'
+# }}}
+
+# options processing {{{
+while [ $# -gt 0 ] ; do
+	t_arg_full="$1"
+	t_arg_val="${t_arg_full#*=}"
+	t_arg_key="${t_arg_full%%=*}"
+
+	case "${t_arg_key}" in
+		--dry-run )
+			g_dryrun_flag=x ;;
+
+		--mode )
+			f_setmode "${t_arg_val}" ;;
+		--site )
+			f_setsite "${t_arg_val}" ;;
+
+		--help )
+			f_echo_to_stdout "syntax: $0 [--dry-run] [--mode={ prod | dev }] [--site={ github | dev}] HOOKS..."
+			f_echo_to_stdout " HOOKS: one or more of: post-checkout mod-pvt-all mod-pvt-checkout mod-pvt-post-checkout (and others)"
+			exit 0
+			;;
+
+		-- )
+			shift
+			break ;;
+
+		-* )
+			f_abort "unrecognised/unsupported option: '${t_arg_full}'" ;;
+
+		* )
+			break ;;
+
+	esac
+	shift
+done
+# }}}
+
+# post-option processing defaults {{{
+[ -n "${g_mode_id}" ] || f_setmode "${g_mode_defid}"
+[ -n "${g_site_id}" ] || f_setsite "${g_site_defid}"
+# }}}
+
+f_info "mode: '${g_mode_id}'"
+f_info "site: '${g_site_id}'"
+
+# check that we're on the base/root directory {{{
+[ -e .git/ -a -e index.md ] \
+	|| f_abort "this script should be run from the main/base repository directory"
+# }}}
+
+while [ $# -gt 0 ] ; do
+	t_hook_id="$1"
+	shift
+	f_proc_hook "${t_hook_id}"
+done
