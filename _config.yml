@@ -14,6 +14,8 @@ exclude:
   #?  ref: [2020-06-03 00:22:59] ERROR `/images/bgs/body.png' not found.
   #? - "local/"
   - "local/"
+  # is this excluded because it starts with a '.', or because the wildcard has actually worked?
+  - ".editorconfig*"
   # standard jekyll/JB components
   - "Gemfile"
   - "Gemfile.lock"

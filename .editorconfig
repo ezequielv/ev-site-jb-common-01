@@ -1,0 +1,32 @@
+# ref: https://editorconfig-specification.readthedocs.io/en/latest/
+# ref: https://github.com/editorconfig/editorconfig/wiki/EditorConfig-Properties
+#  ref: https://github.com/editorconfig/editorconfig-vim#supported-properties
+
+[*]
+end_of_line = lf
+
+[*.{md,js}]
+charset = utf-8
+trim_trailing_whitespace = true
+
+[*.yml]
+indent_style = space
+indent_size = 2
+# not strictly needed {{{
+insert_final_newline = true
+# }}}
+
+[*.md]
+indent_style = space
+# NOTE: make sure that these settings work with:
+#  * "unordered" and "ordered" lists;
+#  * code blocks (I think it's 4 spaces);
+indent_size = 2
+
+# not strictly needed {{{
+insert_final_newline = true
+# }}}
+# aesthetic settings {{{
+max_line_length = 79
+# }}}
+
