@@ -232,10 +232,10 @@ f_proc_hook()
 		case "${l_hook_id}" in
 			pvt-setup-symlinks )
 				# example:
-				#  .local-pvt-root -> modules/pvt/ev-site-blogtech-pvt-01
+				#  .local-pvt-root -> modules/untracked/ev-site-blogtech-pvt-01
 				#  .local-pvt-cfg -> .local-pvt-root/maincfg
 				#  .local-pvt-dep -> .local-pvt-root/deploycfg
-				f_cmd_ln_s modules/pvt/ev-site-blogtech-pvt-01 .local-pvt-root \
+				f_cmd_ln_s modules/untracked/ev-site-blogtech-pvt-01 .local-pvt-root \
 					&& f_cmd_ln_s .local-pvt-root/maincfg .local-pvt-cfg \
 					&& f_cmd_ln_s .local-pvt-root/deploycfg .local-pvt-dep \
 					|| return $?
@@ -248,7 +248,8 @@ f_proc_hook()
 				;;
 
 			mod-pvt-checkout )
-				f_cmd_git_gen submodule update --init --recursive modules/pvt/ \
+				# TODO: update with parent's URLs and "submodule"-ish information
+				: \
 					|| return $?
 				;;
 

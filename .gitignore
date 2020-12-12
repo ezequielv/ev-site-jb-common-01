@@ -19,6 +19,9 @@ Thumbs.db
 # renamed (gutentags (vim)) "exuberant ctags" output files
 ctags_tags*
 
+# do not track anything under this directory
+/modules/untracked/
+
 Gemfile.lock
 
 .jekyll-metadata
