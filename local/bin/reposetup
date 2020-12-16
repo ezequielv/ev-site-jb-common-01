@@ -180,6 +180,8 @@ while [ $# -gt 0 ] ; do
 	case "${t_arg_key}" in
 		--dry-run )
 			g_dryrun_flag=x ;;
+		--debug )
+			g_debug_flag=x ;;
 
 		--mode )
 			f_setmode "${t_arg_val}" ;;
