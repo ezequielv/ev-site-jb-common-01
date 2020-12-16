@@ -1,0 +1,106 @@
+#!/bin/sh
+set -e
+
+# boilerplate {{{
+. "${0%/*}/../common/common_functions.sh" || exit $?
+f_standard_init
+# }}}
+
+[ -d "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}/" ] \
+	|| f_abort "directory '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}' does not exist.  another script sould have populated that directory before this point."
+
+# MAYBE: use 'exec'? (but that would not execute the 'EXIT' trap handler)
+f_cmd_run \
+	"${0%/*}/../common/local-bin-dir/site_keep_previously_compressed_if_source_unchanged" \
+		--prev-dir="${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" \
+		--build-dir="${JEKYLLDEPLOY_HOOKS_SITECONTENT_BUILD_DIR}" \
+	# end
+
+# ... # TODO: abstract this into another executable (to use in standard website deployments from non-github (hooks) environments) {{{
+# ... #  IDEA: .../site_keep_previously_compressed_if_source_unchanged --prev-dir=... --build-dir=...
+# ... g_dir_prev="${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}"
+# ... g_dir_build="${JEKYLLDEPLOY_HOOKS_SITECONTENT_BUILD_DIR}"
+
+# functions {{{
+unset \
+	g_tmpfiles_spacesep \
+	# end
+# if successful, updates g_tmpfiles_spacesep, g_tmpfile_last
+f_mktemp_handled()
+{
+	unset g_tmpfile_last
+
+	g_tmpfile_last=$(mktemp --tmpdir) \
+		&& [ -e "${g_tmpfile_last}" ] \
+		|| {
+			unset g_tmpfile_last
+			return $?
+		}
+	f_debug "created temporary file '${g_tmpfile_last}'"
+	g_tmpfiles_spacesep="${g_tmpfiles_spacesep:+${g_tmpfiles_spacesep} }${g_tmpfile_last}"
+}
+
+f_cleanup_handled_tmpfiles()
+{
+	#? prev: v1: l_cleanup_handled_tmpfiles_files="${g_tmpfiles_spacesep}"
+	#? prev: v1: unset g_tmpfiles_spacesep
+	#? prev: v1: [ -n "${l_cleanup_handled_tmpfiles_files}" ] || return 0
+	l_cleanup_handled_tmpfiles_files="${g_tmpfiles_spacesep}"
+	unset g_tmpfiles_spacesep
+	[ -n "${l_cleanup_handled_tmpfiles_files}" ] || return 0
+	f_cmd_run rm -vf ${l_cleanup_handled_tmpfiles_files}
+}
+
+f_exit_handler()
+{
+	f_cleanup_handled_tmpfiles
+}
+trap f_exit_handler EXIT
+# }}}
+
+# args: DIR
+# output var: g_site_ls_fileslist (temporary file)
+#  contents: DIR-based relative pathnames that have a "source file" that has a compressed file alongside
+#   (example: 'file.someext' if there is a file 'file.someext.gz')
+f_site_dir_ls_compressed_sources()
+{
+	unset g_site_ls_fileslist
+	[ -n "${1}" -a -d "${1}/" ] || f_error "unspecified/non-existing directory ('${1}')"
+
+	f_mktemp_handled \
+		&& g_site_ls_fileslist="${g_tmpfile_last}" \
+		|| return $?
+
+	# ref: find _site/ -type f -exec test -f '{}.gz' ';' -print | sort
+	# ref: ( cd _site/ && find -type f -exec test -f '{}.gz' ';' -printf '%P\n' | sort )
+	f_debug "about to scan for source files with compressed siblings in directory '${1}'..."
+	( cd "${1}" && find -type f -exec test -f '{}.gz' ';' -printf '%P\n' | sort ) > "${g_site_ls_fileslist}"
+}
+
+f_site_dir_ls_compressed_sources "${g_dir_prev}"
+g_ls_sourcescompressed_prev="${g_site_ls_fileslist}"
+
+if [ ! -s "${g_ls_sourcescompressed_prev}" ] ; then
+	f_info "previous site output directory '${g_dir_prev}' does not contain any compressed (source) files. nothing to be done."
+	exit 0
+fi
+
+f_site_dir_ls_compressed_sources "${g_dir_build}"
+g_ls_sourcescompressed_build="${g_site_ls_fileslist}"
+
+if [ ! -s "${g_ls_sourcescompressed_build}" ] ; then
+	f_info "site build output directory '${g_dir_build}' does not contain any compressed (source) files. nothing to be done."
+	exit 0
+fi
+
+# TODO: now we process files that exist in both file lists ('grep with a strings list'?, 'diff'?)
+
+# TODO: restore 'mtime' in the output dir files.
+#  MAYBE: by copying the file properties from each source file to the destination?
+#  IDEA: use 'cp --attributes-only --parents' to copy the timestamp (and permissions, which don't hurt)
+#  IDEA: use 'cp -a' to copy the '.gz' files
+
+# MAYBE: DEBUG: (maybe in a different script?) show directory trees to stdout/stderr so we can visually inspect the final results (without committing to git)
+
+# }}}
+

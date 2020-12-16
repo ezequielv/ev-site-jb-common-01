@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+f_info()
+{
+	echo "$prgname: [info]" "$@" 1>&2
+}
+prgname="$0"
+
+f_info starting
+
+env -0 \
+	| grep -z -E \
+		'^[^=]*(PATH|RUBY|JEKYLL)' \
+	| tr '\0' '\n' \
+	# end
+
+f_info finishing normally
