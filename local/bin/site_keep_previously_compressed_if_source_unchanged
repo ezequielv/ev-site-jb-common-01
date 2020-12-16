@@ -1,0 +1,650 @@
+#!/bin/sh
+set -e
+
+# defaults {{{
+g_prgname="${0##*/}"
+# }}}
+
+# boilerplate {{{
+. "${0%/*}/sh_functions.sh" || exit $?
+# }}}
+
+# ref: # MAYBE: use 'exec'? (but that would not execute the 'EXIT' trap handler)
+# ref: f_cmd_run \
+# ref: 	"${0%/*}/../common/local-bin-dir/site_keep_previously_compressed_if_source_unchanged" \
+# ref: 		--prev-dir="${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" \
+# ref: 		--build-dir="${JEKYLLDEPLOY_HOOKS_SITECONTENT_BUILD_DIR}" \
+# ref: 	# end
+
+# ... # TODO: abstract this into another executable (to use in standard website deployments from non-github (hooks) environments) {{{
+# ... #  IDEA: .../site_keep_previously_compressed_if_source_unchanged --prev-dir=... --build-dir=...
+# ... g_dir_site_prev="${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}"
+# ... g_dir_site_out="${JEKYLLDEPLOY_HOOKS_SITECONTENT_BUILD_DIR}"
+
+# to "common" module {{{
+f_matching_lines_on_two_files()
+{
+	[ $# -eq 2 ] || f_abort "f_matching_lines_on_two_files(): invalid number of args (given: $#, needed: 2)"
+	# ref: http://awk.freeshell.org/ComparingTwoFiles
+	#  ref: awk 'FNR==NR {arr[$0];next} $1 in arr' file1 file2
+	#-? (only compares $1 against the full record (line) previously stored as a key in 'arr'): awk 'FNR==NR {arr[$0];next} $1 in arr' "$@"
+	awk 'FNR==NR {arr[$0];next} $0 in arr' "$@"
+}
+# }}}
+
+# functions (to "common" too?) {{{
+unset \
+	g_tmpfiles_spacesep \
+	# end
+# if successful, updates g_tmpfiles_spacesep, g_tmpfile_last
+f_mktemp_handled()
+{
+	unset g_tmpfile_last
+	unset l_mktemp_handled_mktemp_args_post
+
+	[ -z "${g_tmpfiles_template_default}" -a -n "${g_tmpfiles_template_audodefault_flag}" ] \
+		&& g_tmpfiles_template_default="tmp.${g_prgname##*/}.$$.XXXXXXXX"
+	# MAYBE: other options...
+	[ -n "${g_tmpfiles_template_default}" ] \
+		&& l_mktemp_handled_mktemp_args_post="${l_mktemp_handled_mktemp_args_post:+${l_mktemp_handled_mktemp_args_post} }${g_tmpfiles_template_default}"
+
+	g_tmpfile_last=$(mktemp --tmpdir ${l_mktemp_handled_mktemp_args_post}) \
+		&& [ -e "${g_tmpfile_last}" ] \
+		|| {
+			unset g_tmpfile_last
+			return $?
+		}
+	f_debug "created temporary file '${g_tmpfile_last}'"
+	g_tmpfiles_spacesep="${g_tmpfiles_spacesep:+${g_tmpfiles_spacesep} }${g_tmpfile_last}"
+}
+
+f_cleanup_handled_tmpfiles()
+{
+	#? prev: v1: l_cleanup_handled_tmpfiles_files="${g_tmpfiles_spacesep}"
+	#? prev: v1: unset g_tmpfiles_spacesep
+	#? prev: v1: [ -n "${l_cleanup_handled_tmpfiles_files}" ] || return 0
+	l_cleanup_handled_tmpfiles_files="${g_tmpfiles_spacesep}"
+	unset g_tmpfiles_spacesep
+	[ -n "${l_cleanup_handled_tmpfiles_files}" ] || return 0
+	#+ prev: v1: f_cmd_run rm -vf ${l_cleanup_handled_tmpfiles_files}
+	#? prev: v2: ${g_debug_flag:+f_cmd_run} rm -vf ${l_cleanup_handled_tmpfiles_files}
+	rm ${g_cmd_flags_verbose} -f ${l_cleanup_handled_tmpfiles_files}
+}
+
+f_exit_handler()
+{
+	f_cleanup_handled_tmpfiles
+}
+trap f_exit_handler EXIT
+# }}}
+
+f_local_exit_handler()
+{
+	if [ -n "${g_tmpfiles_keep}" -a -n "${g_tmpfiles_spacesep}" ] ; then
+		f_info "warning: keeping temporary files: ${g_tmpfiles_spacesep}"
+		unset g_tmpfiles_spacesep
+	fi
+	f_exit_handler
+}
+trap f_local_exit_handler EXIT
+
+f_local_print_errorstring_to_stdout()
+{
+	printf '\n%s\n' '[ERROR]'
+}
+
+f_local_filter_cat_propagate_error()
+{
+	awk '
+		# XREF: there are other instances of this. id: awk_snippet_propagate_error {{{
+		( ( NF == 1 ) && ( $1 == "[ERROR]" ) ) {
+			# propagate error line (maybe configurable through an
+			# input variable? ("-v ...=1"))
+			print
+			exit 1
+		}
+		# }}}
+		1 # default action: print
+		'
+}
+
+f_local_filter_pass_nonemptylinesonly()
+{
+	grep -ve '^[[:blank:]]*$'
+}
+
+# args: DIR
+# output var: g_site_ls_fileslist (temporary file)
+#  contents: DIR-based relative pathnames that have a "source file" that has a compressed file alongside
+#   (example: 'file.someext' if there is a file 'file.someext.gz')
+f_site_dir_ls_compressed_sources()
+{
+	unset g_site_ls_fileslist
+	[ -n "${1}" -a -d "${1}/" ] || f_error "unspecified/non-existing directory ('${1}')"
+
+	f_mktemp_handled \
+		&& g_site_ls_fileslist="${g_tmpfile_last}" \
+		|| return $?
+
+	# ref: find _site/ -type f -exec test -f '{}.gz' ';' -print | sort
+	# ref: ( cd _site/ && find -type f -exec test -f '{}.gz' ';' -printf '%P\n' | sort )
+	f_debug "about to scan for source files with compressed siblings in directory '${1}'..."
+	# ref: see substitutions here:
+	#  $ printf '%s\t%s\t%s\n' 'a\b ,cd' 'two with space' three | awk '{ gsub("[ \\\\]", "\\\\&" ); print; }' | while read v1 v2 v3 v4 ; do echo "v1: '$v1'; v2: '$v2'; v3: '$v3'; v4: '$v4';" ; done
+	#  v1: 'a\b ,cd'; v2: 'two with space'; v3: 'three'; v4: '';
+	# prev: matched basenames with "compressed" files available:
+	#  prev: ${g_find_opt_match_has_comp_from_base} \
+	#
+	{
+		find "${1}/" \
+				'(' \
+					'(' \
+						-type d \
+						'(' \
+							-name '.git'  \
+						')' \
+						-prune \
+					')' \
+				')' \
+				-o '(' \
+					-type f \
+					-printf '%P' \
+						'(' \
+							${g_find_opt_printf_matches_comp_from_base} \
+								-o -true \
+						')' \
+						-printf '\n' \
+				')' \
+			|| f_local_print_errorstring_to_stdout
+	} \
+		| f_local_awk_on_dir_ls_output \
+			'
+				# XREF: there are other instances of this. id: awk_snippet_propagate_error {{{
+				( ( NF == 1 ) && ( $1 == "[ERROR]" ) ) {
+					# propagate error line (maybe configurable through an
+					# input variable? ("-v ...=1"))
+					print
+					#- own error handling: exit 1
+					g_rc = 1 ; exit
+				}
+				# }}}
+
+				{
+					r_proc = 1
+
+					for ( i = 2; i <= NF; ++i ) {
+						# if this has already been seen as an "output" for another "base", then
+						# we make sure that:
+						# * the "seen" "base" is removed, thus it will not be processed later;
+						# * this entry itself is removed (same outcome as above);
+						if ( $i in g_files_outputs ) {
+							# MAYBE: print a warning message?
+							fb = g_files_outputs[ $i ]
+							# NOTE: maybe another "output" processing has already deleted
+							# these elements, but this seems to be a no-op if the array does
+							# not have the specified key.
+							delete g_records_for_base[ fb ]
+							delete g_noutputs_for_base[ fb ]
+							r_proc = 0
+							break
+						} else {
+							g_files_outputs[ $i ] = $1
+						}
+					}
+					if ( r_proc ) {
+						g_records_for_base[ $1 ] = $0
+						g_noutputs_for_base[ $1 ] = NF - 1
+					}
+				}
+
+				END {
+					if ( g_rc == 0 ) {
+						#-? # for every "output", we make sure that it has no "output" entries of
+						#-? # its own (we remove those).
+						#-? for ( f in g_files_outputs ) {
+						#-? 	if ( g_noutputs_for_base[ f ] > 0 ) {
+						#-? 		# this file has its own outputs, so we will not process
+						#-? 		# it (we do not fully understand how to fully reproduce
+						#-? 		# every outputs related to every affected "base")
+						#-? 		delete g_records_for_base[ f ]
+						#-? 		delete g_noutputs_for_base[ f ]
+						#-? 	}
+						#-? }
+						for ( f in g_files_outputs ) {
+							# parts are not "base" files, so they are not allowed parts of
+							# their own.
+							delete g_records_for_base[ f ]
+							delete g_noutputs_for_base[ f ]
+						}
+
+						# now_unneeded?: # for every potential "main" file, we make sure that it is not defined
+						# now_unneeded?: # as an "output" for another "main" file.
+						# now_unneeded?: for ( f in g_records_for_base ) {
+						# now_unneeded?: 	if ( !( f in g_files_outputs ) ) {
+						# now_unneeded?: 		print g_records_for_base[ f ]
+						# now_unneeded?: 	}
+						# now_unneeded?: }
+
+						# print all records that remain in g_records_for_base
+						for ( f in g_records_for_base ) {
+							printf "%s\n", g_records_for_base[ f ]
+						}
+					}
+					# error propagation-compatible message to stdout
+					if ( g_rc != 0 ) {
+						printf "\n[ERROR] [awk] processing find command output\n"
+					}
+					exit g_rc
+				}
+			' \
+		| f_local_filter_pass_nonemptylinesonly \
+		| sort \
+		| f_local_filter_cat_propagate_error \
+		> "${g_site_ls_fileslist}"
+}
+
+f_local_awk_on_dir_ls_output()
+{
+	awk \
+		-v g_src_dir="${g_dir_site_prev}" \
+		-v g_dst_dir="${g_dir_site_out}" \
+		-v g_sq="'" \
+		-v g_debug_flag="${g_debug_flag}" \
+		-F "${g_sitefilteredlist_fieldsep}" \
+		"$@"
+}
+
+# args: passed to xargs
+f_local_xargs_on_fileslist()
+{
+	xargs \
+		-d '\n' \
+		${g_debug_flag:+--verbose} \
+		\
+		${g_dryrun_flag:+echo '[debug] '} \
+		"$@"
+}
+
+# args: FILENAME [FRIENDLYNAME [DESC_FOR_NLINES]]
+#  (to skip an argument, specify a null string)
+f_local_info_on_dir_ls_output()
+{
+	unset \
+		l_info_lsoutput_friendlyname \
+		l_info_lsoutput_descfornlines \
+		# end
+
+	# ... prev: v1: l_info_lsoutput_pname="$1" \
+	# ... prev: v1: 	&& shift \
+	# ... prev: v1: 	&& l_info_lsoutput_friendlyname="$1" \
+	# ... prev: v1: 	&& shift \
+	# ... prev: v1: 	&& : "${l_info_lsoutput_friendlyname:=${l_info_lsoutput_pname}}" \
+	# ... prev: v1: 	&& l_info_lsoutput_descfornlines="$1" \
+	# ... prev: v1: 	&& : "${l_info_lsoutput_descfornlines:=#entries}" \
+	# ... prev: v1: 	&& shift \
+	# ... prev: v1: 	|| f_error "f_local_info_on_dir_ls_output(): bad arguments" \
+	# ... prev: v1: 	|| return $?
+	[ $# -gt 0 ] \
+		&& l_info_lsoutput_pname="$1" \
+		&& l_info_lsoutput_friendlyname="$2" \
+		&& : "${l_info_lsoutput_friendlyname:=${l_info_lsoutput_pname}}" \
+		&& l_info_lsoutput_descfornlines="$3" \
+		&& : "${l_info_lsoutput_descfornlines:=#entries}" \
+		|| f_error "f_local_info_on_dir_ls_output(): bad arguments" \
+		|| return $?
+
+	l_info_lsoutput_nlines=$(wc -l "${l_info_lsoutput_pname}" | awk '{print $1}') \
+		|| [ -n "${l_info_lsoutput_nlines}" ] \
+		|| f_error "f_local_info_on_dir_ls_output(): could not get number of lines for file '${l_info_lsoutput_pname}' (friendly name: '${l_info_lsoutput_friendlyname}')" \
+		|| return $?
+
+	f_info "${l_info_lsoutput_friendlyname}: ${l_info_lsoutput_descfornlines}: ${l_info_lsoutput_nlines}"
+}
+
+
+# defaults {{{
+unset \
+	g_dir_site_prev \
+	g_dir_site_out \
+	\
+	g_tmpfiles_keep \
+	\
+	g_verbose_flag \
+	# end
+g_tmpfiles_template_audodefault_flag=x
+# MAYBE: LATER: g_sitecomp_suffixes='.gz .bz2'
+#+ g_sitecomp_suffixes='.gz'
+#+ g_sitecomp_suffixes='.gz .bz2 .bzip2 .gzip .Z'
+g_sitecomp_suffixes='.gz'
+g_sitefilteredlist_fieldsep='<<sep>>'
+# }}}
+
+# options processing {{{
+while [ $# -gt 0 ] ; do
+	t_arg_full="$1"
+	t_arg_val="${t_arg_full#*=}"
+	t_arg_key="${t_arg_full%%=*}"
+
+	case "${t_arg_key}" in
+		--dry-run )
+			g_dryrun_flag=x ;;
+		--debug )
+			g_debug_flag=x ;;
+		--verbose )
+			g_verbose_flag=x ;;
+		--keep-tmpfiles )
+			g_tmpfiles_keep=x ;;
+
+		--prev-dir )
+			g_dir_site_prev="${t_arg_val}" ;;
+		--build-dir )
+			g_dir_site_out="${t_arg_val}" ;;
+
+		--help )
+			f_echo_to_stdout "syntax: $0 [--dry-run] [--debug] [--keep-tmpfiles] --prev-dir=DIR1 --build-dir=DIR2"
+			exit 0
+			;;
+
+		-- )
+			shift
+			break ;;
+
+		-* )
+			f_abort "unrecognised/unsupported option: '${t_arg_full}'" ;;
+
+		* )
+			break ;;
+
+	esac
+	shift
+done
+# }}}
+
+# post-option processing defaults {{{
+unset \
+	g_find_opt_match_has_comp_from_base \
+	g_find_opt_printf_matches_comp_from_base \
+	g_find_opt_match_is_comp_maybehasbase \
+	g_cmd_flags_verbose \
+	# end
+#+ prev: v1: [ -n "${g_debug_flag}" ] && g_cmd_flags_verbose='-v'
+#? prev: v2: [ -n "${g_debug_flag}${g_verbose_flag}" ] && g_cmd_flags_verbose='-v'
+[ -n "${g_debug_flag}" ] && g_verbose_flag=x
+[ -n "${g_verbose_flag}" ] && g_cmd_flags_verbose='-v'
+
+# update g_find_opt_* variables {{{
+t_test_cmd_pref="-exec test"
+t_test_cmd_suff=";"
+for t_suff in ${g_sitecomp_suffixes}
+do
+	#-? t_match_expr="-f '{}${t_suff}'"
+	t_match_expr="-f {}${t_suff}"
+	g_find_opt_match_has_comp_from_base="${g_find_opt_match_has_comp_from_base:+${g_find_opt_match_has_comp_from_base} -o }${t_match_expr}"
+	#-? g_find_opt_printf_matches_comp_from_base="${g_find_opt_printf_matches_comp_from_base:+ -o }( ( ${t_test_cmd_pref} ${t_match_expr} ${t_test_cmd_suff} ) -a -printf '\\t%P${t_suff}' )"
+	#? ... prev: v1: g_find_opt_printf_matches_comp_from_base="${g_find_opt_printf_matches_comp_from_base:+ -o }( ( ${t_test_cmd_pref} ${t_match_expr} ${t_test_cmd_suff} ) -a -printf \\t%P${t_suff} )"
+	#+ (when processing a single suffix): g_find_opt_printf_matches_comp_from_base="${g_find_opt_printf_matches_comp_from_base:+ -o }( ( ${t_test_cmd_pref} ${t_match_expr} ${t_test_cmd_suff} ) -a -printf ${g_sitefilteredlist_fieldsep}%P${t_suff} )"
+	# NOTE: this expression (now) prints a "suffixed" file, if present, and always evaluates to '-false'.
+	g_find_opt_printf_matches_comp_from_base="${g_find_opt_printf_matches_comp_from_base:+${g_find_opt_printf_matches_comp_from_base} -o }( ( ( ${t_test_cmd_pref} ${t_match_expr} ${t_test_cmd_suff} ) -a -printf ${g_sitefilteredlist_fieldsep}%P${t_suff} ) -o -false )"
+	# TODO: have a 'find' command for files that have "compressed" suffixes, and that we don't know (at the point of processing that file) if it has an uncompressed "base", too.
+	#  (and this might not be trivial, which is why we should probably (later) process this list against the "base+compressed" entries one)
+	#  TODO: find out how to test for a given extension -- maybe just have expressions on those, and have a different 'find' run altogether...
+	g_find_opt_match_is_comp_maybehasbase="${g_find_opt_match_is_comp_maybehasbase:+${g_find_opt_match_is_comp_maybehasbase} -o }-name *${t_suff}"
+done
+if [ -n "${g_find_opt_match_has_comp_from_base}" ] ; then
+	# ref: ( cd "${1}" && find -type f -exec test -f '{}.gz' ';' -printf '%P\n' | sort ) > "${g_site_ls_fileslist}"
+	#? prev: v1: g_find_opt_match_has_comp_from_base="-exec test ${g_find_opt_match_has_comp_from_base} ';'"
+	g_find_opt_match_has_comp_from_base="${t_test_cmd_pref} ${g_find_opt_match_has_comp_from_base} ${t_test_cmd_suff}"
+else
+	g_find_opt_match_has_comp_from_base="-true"
+fi
+f_debug "g_find_opt_match_has_comp_from_base: '${g_find_opt_match_has_comp_from_base}'"
+if [ -n "${g_find_opt_printf_matches_comp_from_base}" ] ; then
+	g_find_opt_printf_matches_comp_from_base="( ${g_find_opt_printf_matches_comp_from_base} )"
+else
+	g_find_opt_printf_matches_comp_from_base="-true"
+fi
+f_debug "g_find_opt_printf_matches_comp_from_base: '${g_find_opt_printf_matches_comp_from_base}'"
+if [ -n "${g_find_opt_match_is_comp_maybehasbase}" ] ; then
+	g_find_opt_match_is_comp_maybehasbase="( ${g_find_opt_match_is_comp_maybehasbase} )"
+else
+	g_find_opt_match_is_comp_maybehasbase="-true"
+fi
+f_debug "g_find_opt_match_is_comp_maybehasbase: '${g_find_opt_match_is_comp_maybehasbase}'"
+# }}}
+
+# }}}
+
+# info before processing {{{
+f_info "previous content site dir: '${g_dir_site_prev}'"
+f_info "built content site dir:    '${g_dir_site_out}'"
+# }}}
+
+# validations {{{
+# TODO: check dirs exist (optionally bailing out without errors if, say, g_dir_site_prev does not exist)
+# }}}
+
+f_info "starting"
+
+f_site_dir_ls_compressed_sources "${g_dir_site_prev}"
+g_ls_sourcescompressed_prev="${g_site_ls_fileslist}"
+
+if [ ! -s "${g_ls_sourcescompressed_prev}" ] ; then
+	f_info "previous site output directory '${g_dir_site_prev}' does not contain any compressed (source) files. nothing to be done."
+	exit 0
+fi
+f_local_info_on_dir_ls_output "${g_ls_sourcescompressed_prev}" "previous site output entries list"
+
+f_site_dir_ls_compressed_sources "${g_dir_site_out}"
+g_ls_sourcescompressed_build="${g_site_ls_fileslist}"
+
+if [ ! -s "${g_ls_sourcescompressed_build}" ] ; then
+	f_info "site build output directory '${g_dir_site_out}' does not contain any compressed (source) files. nothing to be done."
+	exit 0
+fi
+f_local_info_on_dir_ls_output "${g_ls_sourcescompressed_build}" "site build output entries list"
+
+f_mktemp_handled
+g_pathnames_to_process="${g_tmpfile_last}"
+
+#-? ... # quick and dirty (using 'find(1)')
+#-? ... {	f_matching_lines_on_two_files "${g_dir_site_prev}" "${g_dir_site_out}" \
+#-? ... 		|| printf '\n%s\n' "ERROR: matchig files function returned code $?"
+#-? ... } | { \
+#-? ... 	xargs -r ${g_debug_flag:+--verbose} -L 1 \
+#-? ... 		find 
+
+#? ... v1: # TODO: now we process files that exist in both file lists ('grep with a strings list'?, 'diff'?)
+#? ... v1: {	f_matching_lines_on_two_files "${g_ls_sourcescompressed_prev}" "${g_ls_sourcescompressed_build}" \
+#? ... v1: 		|| printf '\n%s\n' "ERROR: matchig files function returned code $?"
+#? ... v1: } | { \
+#? ... v1: 	t_rc=0
+#? ... v1: 	#? prev: v1: while read -r t_line
+#? ... v1: 	while read t_fname t_compressed_files
+#? ... v1: 	do
+#? ... v1: 		#? prev: v1: [ -n "${t_line}" ] || continue # just in case
+#? ... v1: 		#? prev: v1: if [ "$t_line" = "ERROR:" ] ; then
+#? ... v1: 		#? prev: v1: 	# NOTE: this is a subshell, so it will be captured by
+#? ... v1: 		#? prev: v1: 	# the '||' outside the pipeline.
+#? ... v1: 		#? prev: v1: 	f_abort "error calculating lines present on both directories. propagating."
+#? ... v1: 		#? prev: v1: fi
+#? ... v1: 		#? prev: v1: t_fname="${t_line}"
+#? ... v1: 		[ -n "${t_fname}" ] || continue # just in case
+#? ... v1: 		if [ "${t_fname}" = "ERROR:" ] ; then
+#? ... v1: 			# NOTE: this is a subshell, so it will be captured by
+#? ... v1: 			# the '||' outside the pipeline.
+#? ... v1: 			f_abort "error calculating lines present on both directories. propagating."
+#? ... v1: 		fi
+#? ... v1: 
+#? ... v1: 		# process maching file
+#? ... v1: 		t_src_plain="${g_dir_site_prev}/${t_fname}"
+#? ... v1: 		t_dst_plain="${g_dir_site_out}/${t_fname}"
+#? ... v1: 
+#? ... v1: 		f_debug " processing entry:"
+#? ... v1: 		f_debug "  pathname: '${t_fname}'"
+#? ... v1: 		f_debug "  src (plain): '${t_src_plain}'"
+#? ... v1: 		f_debug "  dst (plain): '${t_dst_plain}'"
+#? ... v1: 
+#? ... v1: 		#? t_rc_last=0 ; f_cmd_run cmp "${t_src_plain}" "${t_dst_plain}" || t_rc_last=$?
+#? ... v1: 		t_rc_last=0 ; cmp "${t_src_plain}" "${t_dst_plain}" || t_rc_last=$?
+#? ... v1: 		case "${t_rc_last}" in
+#? ... v1: 			# files are identical -> continue processing
+#? ... v1: 			0 )
+#? ... v1: 				f_debug "  files '${t_src_plain}' and '${t_dst_plain}' match: update(s) in build directory needed"
+#? ... v1: 				;;
+#? ... v1: 			# files are different -> move on to next file
+#? ... v1: 			1 )
+#? ... v1: 				f_debug "  files '${t_src_plain}' and '${t_dst_plain}' do not match -- no updating in the build directory for this source file"
+#? ... v1: 				continue
+#? ... v1: 				;;
+#? ... v1: 			# everything else: "trouble" (see 'cmp(1)')
+#? ... v1: 			* )
+#? ... v1: 				f_error "failed comparing files '${t_src_plain}' and '${t_dst_plain}' (rc: ${t_rc_last}) -- will return error later and skip this file" || :
+#? ... v1: 				t_rc=${t_rc_last}
+#? ... v1: 				continue
+#? ... v1: 				;;
+#? ... v1: 		esac
+#? ... v1: 
+#? ... v1: 		# update timestamp(s) on "build dir" file
+#? ... v1: 		f_debug "  FIXME: continue processing this entry . . ."
+#? ... v1: 		# FIXME: continue...
+#? ... v1: 
+#? ... v1: 	done
+#? ... v1: } \
+#? ... v1: 	> "${g_pathnames_to_process}" \
+#? ... v1: 	|| f_abort "failed processing files present on both directories (calculating pending operations)"
+# comment for f_debug() inside the awk script below:
+#  $ ( for b in '' 0 1 2 x ; do printf 'b: "%s" -> !!b: %s\n' "$b" $(awk -v b="$b" 'BEGIN { print !!b }') ; done )
+#  b: "" -> !!b: 0
+#  b: "0" -> !!b: 0
+#  b: "1" -> !!b: 1
+#  b: "2" -> !!b: 1
+#  b: "x" -> !!b: 1
+{	f_matching_lines_on_two_files "${g_ls_sourcescompressed_prev}" "${g_ls_sourcescompressed_build}" \
+		|| f_local_print_errorstring_to_stdout
+} | { \
+	f_local_awk_on_dir_ls_output \
+		'
+			function fn(bd, bn,		s ) {
+				sub("/+$", "", bd)
+				s = bd "/" bn
+				if ( index(s, g_sq) > 0 ) {
+					gsub( "[ \\\\]", "\\\\&", s )
+				} else {
+					s = g_sq s g_sq
+				}
+				return s
+			}
+			function f_debug(s) {
+				# NOTE: see comment above the enclosing multi-line shell command
+				if ( ! g_debug_flag ) { return 0; }
+				printf "[awk] [debug] %s\n", s > "/dev/stderr"
+			}
+
+			( ( NF >= 1 ) && ( length( $1 ) > 0 ) ) {
+				pn = $1
+				cmp_rc = system(sprintf("cmp %s %s > /dev/null 2>&1", fn(g_src_dir, pn), fn(g_dst_dir, pn)))
+				# from cmp(1) man page:
+				#  Exit status is 0 if inputs are the same, 1
+				#  if different, 2 if trouble.
+				if ( cmp_rc == 0 ) {
+					# identical content -> file will be "processed"
+					f_debug( sprintf( "%s: to be processed (equal)%s", pn, ((NF > 1) ? sprintf(" (will process %d compressed output(s), too)", (NF - 1) ) : "" ) ) )
+					print
+				} else if ( cmp_rc == 1 ) {
+					# files are different -> skip
+					f_debug( sprintf("%s: to be skipped (different)", pn) )
+				} else {
+					# "trouble": report error at the end
+					f_debug( sprintf( "%s: cmp command returned error code: %d", pn, cmp_rc ) )
+					g_rc = 1
+				}
+			}
+
+			END {
+				exit g_rc
+			}
+		'
+} \
+	> "${g_pathnames_to_process}" \
+	|| f_abort "failed processing files present on both directories (calculating pending operations)"
+f_local_info_on_dir_ls_output "${g_pathnames_to_process}" "(file) entries to process (src -> built)"
+
+if [ ! -s "${g_pathnames_to_process}" ] ; then
+	f_info "no entries to process -> nothing to do"
+	exit 0
+fi
+
+g_dir_site_out_fullpath=$(cd "${g_dir_site_out}" && pwd)
+f_debug "g_dir_site_out_fullpath: '${g_dir_site_out_fullpath}'"
+
+f_info "about to update mtimes on equal 'source' files: src -> built"
+# TODO: restore 'mtime' in the output dir files.
+#  MAYBE: by copying the file properties from each source file to the destination?
+#  IDEA: use 'cp --attributes-only --parents' to copy the timestamp (and permissions, which don't hurt)
+#? | f_cmd_run xargs \
+#?   (in xargs): ${g_debug_flag:+--verbose} \
+#
+#+ prev: v1: f_local_awk_on_dir_ls_output \
+#+ prev: v1: 		'
+#+ prev: v1: 		{ print $1 }
+#+ prev: v1: 		' \
+#+ prev: v1: 		"${g_pathnames_to_process}" \
+#+ prev: v1: 	| {
+#+ prev: v1: 		cd "${g_dir_site_prev}" \
+#+ prev: v1: 			&& xargs \
+#+ prev: v1: 				-d '\n' \
+#+ prev: v1: 				${g_debug_flag:+--verbose} \
+#+ prev: v1: 				\
+#+ prev: v1: 				${g_dryrun_flag:+echo '[debug] '} \
+#+ prev: v1: 				cp --attributes-only --parents \
+#+ prev: v1: 					${g_cmd_flags_verbose} \
+#+ prev: v1: 					-t "${g_dir_site_out_fullpath}" \
+#+ prev: v1: 				# end
+#+ prev: v1: 	} \
+#+ prev: v1: 	|| f_abort "failed updating mtimes from src -> built directories"
+#?  ('cp' options):	--attributes-only \
+#
+f_local_awk_on_dir_ls_output \
+		'
+		{ print $1 }
+		' \
+		"${g_pathnames_to_process}" \
+	| {
+		cd "${g_dir_site_prev}" \
+			&& f_local_xargs_on_fileslist \
+				cp --parents \
+					${g_cmd_flags_verbose} \
+					--attributes-only -p \
+					-t "${g_dir_site_out_fullpath}" \
+				# end
+	} \
+	|| f_abort "failed updating mtimes from src -> built directories"
+
+f_info "about to copy 'output' files (for equal 'source' files): src -> built"
+#  IDEA: use 'cp -a' to copy the '.gz' files
+f_local_awk_on_dir_ls_output \
+		'
+		{
+			for ( i = 2; i <= NF; ++i ) {
+				printf "%s\n", $i
+			}
+		}
+		' \
+		"${g_pathnames_to_process}" \
+	| {
+		cd "${g_dir_site_prev}" \
+			&& f_local_xargs_on_fileslist \
+				cp --parents \
+					${g_cmd_flags_verbose} \
+					-a \
+					-t "${g_dir_site_out_fullpath}" \
+				# end
+	} \
+	|| f_abort "failed updating mtimes from src -> built directories"
+
+
+# MAYBE: DEBUG: (maybe in a different script?) show directory trees to stdout/stderr so we can visually inspect the final results (without committing to git)
+
+f_info "exiting normally"
+
+# }}}
