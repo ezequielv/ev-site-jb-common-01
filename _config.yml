@@ -8,6 +8,7 @@ exclude:
   - ".rvmrc"
   - ".rbenv-version"
   - ".local[-_]*"
+  - ".github/"
   - "lftp-*.cfg"
   # this is a directory
   #? NOTE: error when serving '/index.html':
