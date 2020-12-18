@@ -131,9 +131,6 @@ f_proc_hook()
 					&& f_cmd_ln_s .local-pvt-root/deploycfg .local-pvt-dep \
 					|| return $?
 				t_srcdir='.local-pvt-dep'
-				#? prev: v1: if f_has_all_files "${t_srcdir}"/lftp[-_]* ; then
-				#? prev: v1: 	f_cmd_ln_s "${t_srcdir}"/lftp[-_]* .
-				#? prev: v1: fi
 				f_ln_all_src_to_single_dst --only-src-existing . "${t_srcdir}"/lftp[-_]* \
 					|| return $?
 				;;
