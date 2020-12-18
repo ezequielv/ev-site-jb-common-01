@@ -1,5 +1,10 @@
-_site/*
-_site-*/*
+# directories/symlinks containing:
+#  * build output (generally);
+/_site
+#  * remote sites "mirrored" directories;
+#  * content to be "published" to remote sites;
+/_site-*
+
 _theme_packages/*
 
 Thumbs.db
