@@ -33,7 +33,9 @@ f_git_init_from_basedir()
 		|| return $?
 
 	# NOTE: setup steps inspired by '[ezequielv/jekyll-deploy]/deployer/entrypoint.rb' {{{
-	f_cmd_run mkdir -pv "${l_git_init_from_basedir_dst_dir}" \
+	#+ prev: f_cmd_run mkdir -pv "${l_git_init_from_basedir_dst_dir}" \
+	#
+	f_cmd_git_gen init "${l_git_init_from_basedir_dst_dir}" \
 		&& f_cmd_run cp -av "${JEKYLLDEPLOY_HOOKS_BASE_DIR}/.git/config" "${l_git_init_from_basedir_dst_dir}/.git/" \
 		|| f_error "failed to set up git directory '${l_git_init_from_basedir_dst_dir}'" \
 		|| return $?
