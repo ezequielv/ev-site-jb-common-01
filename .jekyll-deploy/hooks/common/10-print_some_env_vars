@@ -12,6 +12,7 @@ f_info starting
 env -0 \
 	| grep -z -E \
 		'^[^=]*(PATH|RUBY|JEKYLL|GIT|GITHUB)' \
+	| sort -z \
 	| tr '\0' '\n' \
 	# end
 
