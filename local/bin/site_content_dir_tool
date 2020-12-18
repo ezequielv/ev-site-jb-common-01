@@ -1,0 +1,650 @@
+#!/bin/sh
+set -e
+
+# boilerplate {{{
+. "${0%/*}/sh_functions.sh" || exit $?
+# }}}
+
+# options processing {{{
+while [ $# -gt 0 ] ; do
+	t_arg_full="$1"
+	t_arg_val="${t_arg_full#*=}"
+	# NOTE: t_arg_key cannot contain '=' (as per the substitution below).
+	t_arg_key="${t_arg_full%%=*}"
+
+	case "${t_arg_key}=:=${t_arg_full}" in
+		--dry-run=:=* )
+			g_dryrun_flag=x ;;
+		--debug=:=* )
+			g_debug_flag=x ;;
+
+
+		--help=:=* )
+			f_echo_to_stdout "syntax: $0 [--dry-run] [--debug] [OPERATIONS...]"
+			f_echo_to_stdout " OPERATIONS: one or more of: check-is-site-content-dir"
+			exit 0
+			;;
+
+		--=:=-- )
+			shift
+			break ;;
+
+		-* )
+			f_abort "unrecognised/unsupported option: '${t_arg_full}'" ;;
+
+		* )
+			break ;;
+
+	esac
+	shift
+done
+# }}}
+
+# post-option processing defaults {{{
+# }}}
+
+# TODO: move to a generic module {{{
+
+#? (unfinished) v1: # NOTE: this function is meant to be used internally by f_has_files_*() functions
+#? (unfinished) v1: f_has_files_common_checkonefile()
+#? (unfinished) v1: {
+#? (unfinished) v1: 	l_has_files_common_checkonefile_operid="$1"
+#? (unfinished) v1: 	l_has_files_common_checkonefile_fname="$2"
+#? (unfinished) v1: 	#? [ -n "${l_has_files_common_checkonefile_fname}" ] || return 0
+#? (unfinished) v1: 	[ -n "${l_has_files_common_checkonefile_fname}" ] \
+#? (unfinished) v1: 		|| f_abort "f_has_files_common_checkonefile(): pathname missing"
+#? (unfinished) v1: 
+#? (unfinished) v1: 	l_has_files_common_checkonefile_exists=0
+#? (unfinished) v1: 	# TODO: support several check types (support '-e', '-d' (with a trailing '/' added to the name?), etc.)
+#? (unfinished) v1: 	[ -f "${l_has_files_common_checkonefile_fname}" ] && l_has_files_common_checkonefile_exists=1
+#? (unfinished) v1: 	# default: check failed (boolean 'false')
+#? (unfinished) v1: 	l_has_files_common_checkonefile_rc=1
+#? (unfinished) v1: 
+#? (unfinished) v1: 	case "${l_has_files_common_checkonefile_operid}" in
+#? (unfinished) v1: 		*-not-exist )
+#? (unfinished) v1: 			[ "${l_has_files_common_checkonefile_exists}" -eq 0 ] \
+#? (unfinished) v1: 				&& l_has_files_common_checkonefile_rc=0
+#? (unfinished) v1: 			;;
+#? (unfinished) v1: 
+#? (unfinished) v1: 		*-exist )
+#? (unfinished) v1: 			[ "${l_has_files_common_checkonefile_exists}" -ne 0 ] \
+#? (unfinished) v1: 				&& l_has_files_common_checkonefile_rc=0
+#? (unfinished) v1: 			;;
+#? (unfinished) v1: 
+#? (unfinished) v1: 		* )
+#? (unfinished) v1: 			f_abort "f_has_files_common_checkonefile(): invalid operation id: '${l_has_files_common_checkonefile_operid}'"
+#? (unfinished) v1: 			;;
+#? (unfinished) v1: 	esac
+#? (unfinished) v1: 
+#? (unfinished) v1: 	l_has_files_common_checkonefile_checkmessage_pref="pathname existence check: "
+#? (unfinished) v1: 	l_has_files_common_checkonefile_checkmessage_suff=". pathname: '${l_has_files_common_checkonefile_fname}'; check_id: '${l_has_files_common_checkonefile_operid}');"
+#? (unfinished) v1: 	if [ "${l_has_files_common_checkonefile_rc}" -ne 0 ] ; then
+#? (unfinished) v1: 		case "${l_has_files_common_checkonefile_operid}" in
+#? (unfinished) v1: 			must-* | *-must-* )
+#? (unfinished) v1: 				f_error "${l_has_files_common_checkonefile_checkmessage_pref}failed${l_has_files_common_checkonefile_checkmessage_suff}" \
+#? (unfinished) v1: 					|| : # NOTE: returns below
+#? (unfinished) v1: 					#? || return ${l_has_files_common_checkonefile_rc}
+#? (unfinished) v1: 				;;
+#? (unfinished) v1: 
+#? (unfinished) v1: 			silent-* | *-silent-* )
+#? (unfinished) v1: 				: ;;
+#? (unfinished) v1: 
+#? (unfinished) v1: 			* )
+#? (unfinished) v1: 				f_debug "${l_has_files_common_checkonefile_checkmessage_pref}failed${l_has_files_common_checkonefile_checkmessage_suff}"
+#? (unfinished) v1: 				;;
+#? (unfinished) v1: 		esac
+#? (unfinished) v1: 	else
+#? (unfinished) v1: 		f_debug "${l_has_files_common_checkonefile_checkmessage_pref}success${l_has_files_common_checkonefile_checkmessage_suff}"
+#? (unfinished) v1: 	fi
+#? (unfinished) v1: 	return ${l_has_files_common_checkonefile_rc}
+#? (unfinished) v1: }
+
+# MAYBE: have a single function: f_has_files_multi [options] -- FILES...
+#  where options: [--entrytype={ file <*> | dir | any }] [--cond={ at-least | all <*> | noneof }] [--min=N] [--silent] [--enforcing={ must | should | query <*> }]
+#  NOTE: values suffixed with '<*>' are defaults
+f_has_files_multi()
+{
+	# defaults {{{
+	l_has_files_multi_entrytype='file'
+	l_has_files_multi_condid='all'
+	l_has_files_multi_enforc='query'
+	l_has_files_multi_nmin=1
+	l_has_files_multi_nsuccessfulresults=0
+	l_has_files_multi_queryresult_show_flag=x
+	unset \
+		l_has_files_multi_queryfailed_showerror_flag \
+		l_has_files_multi_queryfailed_errormessage \
+		# end
+	# }}}
+
+	while [ $# -gt 0 ]
+	do
+		l_has_files_multi_arg_full="$1"
+		l_has_files_multi_arg_val="${l_has_files_multi_arg_full#*=}"
+		# NOTE: l_has_files_multi_arg_key cannot contain '=' (as per the substitution below).
+		l_has_files_multi_arg_key="${l_has_files_multi_arg_full%%=*}"
+
+		case "${l_has_files_multi_arg_key}=:=${l_has_files_multi_arg_full}" in
+			--entrytype=:=* )
+				# NOTE: validated/handled later (inside next 'while' loop)
+				l_has_files_multi_entrytype="${l_has_files_multi_arg_val}"
+				;;
+
+			--cond=:=* )
+				l_has_files_multi_condid="${l_has_files_multi_arg_val}"
+				case "${l_has_files_multi_condid}" in
+					at-least | all | noneof ) : ;;
+					* )
+						f_abort "f_has_files_multi(): invalid value in '--cond': '${l_has_files_multi_condid}'" ;;
+				esac
+				;;
+
+			--min=:=* )
+				l_has_files_multi_nmin="${l_has_files_multi_arg_val}" ;;
+
+			--silent=:=* )
+				unset l_has_files_multi_queryresult_show_flag ;;
+
+			--enforcing=:=* )
+				l_has_files_multi_enforc="${l_has_files_multi_arg_val}"
+				case "${l_has_files_multi_enforc}" in
+					must | should )
+						l_has_files_multi_queryfailed_showerror_flag=x ;;
+					query )
+						unset l_has_files_multi_queryfailed_showerror_flag ;;
+					* )
+						f_abort "f_has_files_multi(): invalid value in '--enforcing': '${l_has_files_multi_enforc}'" ;;
+				esac
+				;;
+
+			--=:=-- )
+				shift
+				break ;;
+
+			-* )
+				f_abort "unrecognised/unsupported option: '${t_arg_full}'" ;;
+
+			* )
+				break ;;
+
+		esac
+		shift
+	done
+
+	case "${l_has_files_multi_entrytype}" in
+		file )
+			l_has_files_multi_entrytdesc='file' ;;
+		dir )
+			l_has_files_multi_entrytdesc='directory' ;;
+		any )
+			l_has_files_multi_entrytdesc='pathname' ;;
+		* )
+			f_abort "f_has_files_multi(): invalid/unsupported entry type: '${l_has_files_multi_entrytype}'" ;;
+	esac
+
+	# NOTE: once this is set (!= ''), it will not be reset
+	unset l_has_files_multi_queryresult
+
+	l_has_files_multi_pathnames_orig_list="$*"
+
+	f_debug "checking for ${l_has_files_multi_entrytdesc} entries in dir '${PWD}'. condition_id='${l_has_files_multi_condid}'. pathnames: '${l_has_files_multi_pathnames_orig_list}'"
+
+	while [ $# -gt 0 ]
+	do
+		l_has_files_multi_pathname="${1}"
+		shift
+		# NOTE: for now, we skip empty args
+		[ -n "${l_has_files_multi_pathname}" ] || continue
+
+		l_has_files_multi_pathnameexists=0
+		[ -e "${l_has_files_multi_pathname}" ] \
+			&& l_has_files_multi_pathnameexists=1
+		# update l_has_files_multi_pathnameexists
+		if [ "${l_has_files_multi_pathnameexists}" -ne 0 ] ; then
+			l_has_files_multi_pathnameexists=0
+			case "${l_has_files_multi_entrytype}" in
+				file )
+					[ -f "${l_has_files_multi_pathname}" ] \
+						&& l_has_files_multi_pathnameexists=1
+					;;
+				dir )
+					[ -d "${l_has_files_multi_pathname}/" ] \
+						&& l_has_files_multi_pathnameexists=1
+					;;
+				any )
+					l_has_files_multi_pathnameexists=1 ;;
+				* )
+					f_abort "f_has_files_multi(): invalid/unsupported entry type: '${l_has_files_multi_entrytype}'" ;;
+			esac
+		fi
+
+		# map: l_has_files_multi_pathnameexists -> l_has_files_multi_pathnametestresult
+		l_has_files_multi_pathnametestresult=0
+		case "${l_has_files_multi_condid}" in
+			at-least | all )
+				[ "${l_has_files_multi_pathnameexists}" -ne 0 ] \
+					&& l_has_files_multi_pathnametestresult=1
+				;;
+
+			noneof )
+				[ "${l_has_files_multi_pathnameexists}" -eq 0 ] \
+					&& l_has_files_multi_pathnametestresult=1
+				;;
+
+			* )
+				f_abort "f_has_files_multi(): invalid/unsupported condition id: '${l_has_files_multi_condid}'" ;;
+		esac
+
+		[ "${l_has_files_multi_pathnametestresult}" -ne 0 ] \
+			&& f_debug " ${l_has_files_multi_entrytdesc} successful matching result for pathname '${l_has_files_multi_pathname}' (exists: '${l_has_files_multi_pathnameexists}')"
+
+		# optionally count matches
+		if [ "${l_has_files_multi_pathnametestresult}" -ne 0 ] ; then
+			case "${l_has_files_multi_condid}" in
+				at-least ) # | ...
+					l_has_files_multi_nsuccessfulresults=$(($l_has_files_multi_nsuccessfulresults + 1))
+					;;
+			esac
+		fi
+
+		# optionally stop looking for matches
+		#-? prev: v1: if [ "${l_has_files_multi_pathnametestresult}" -ne 0 ] ; then
+		#-? prev: v1: 	case "${l_has_files_multi_condid}"
+		#-? prev: v1: 		at-least )
+		#-? prev: v1: 			if [ "${l_has_files_multi_nsuccessfulresults}" -ge "${l_has_files_multi_nmin}" ] ; then
+		#-? prev: v1: 				l_has_files_multi_queryresult=1
+		#-? prev: v1: 				break
+		#-? prev: v1: 			fi
+		#-? prev: v1: 			;;
+		#-? prev: v1: 	esac
+		#-? prev: v1: fi
+		case "${l_has_files_multi_condid}" in
+			at-least )
+				if [ "${l_has_files_multi_pathnametestresult}" -ne 0 -a  "${l_has_files_multi_nsuccessfulresults}" -ge "${l_has_files_multi_nmin}" ] ; then
+					l_has_files_multi_queryresult=1
+					break
+				fi
+				;;
+
+			all | noneof )
+				if [ "${l_has_files_multi_pathnametestresult}" -eq 0 ] ; then
+					l_has_files_multi_queryresult=0
+					case "${l_has_files_multi_condid}" in
+						all )
+							l_has_files_multi_queryfailed_errormessage="not every specified ${l_has_files_multi_entrytdesc} is present: ${l_has_files_multi_entrytdesc} '${l_has_files_multi_pathname}' is missing"
+							;;
+						noneof )
+							l_has_files_multi_queryfailed_errormessage="one of the (unwanted) specified ${l_has_files_multi_entrytdesc} entries is present: '${l_has_files_multi_pathname}'"
+							;;
+					esac
+					break
+				fi
+				;;
+
+			* )
+				f_abort "f_has_files_multi(): invalid/unsupported condition id: '${l_has_files_multi_condid}'" ;;
+		esac
+
+	done
+
+	# calculate a value for 'l_has_files_multi_queryresult' (if not already set).
+	if [ -z "${l_has_files_multi_queryresult}" ] ; then
+		case "${l_has_files_multi_condid}" in
+			at-least )
+				# at no point inside the loop we deemed the
+				# matches to be sufficient to stop looking ->
+				# we have not seen enough positive results.
+				l_has_files_multi_queryresult=0
+				l_has_files_multi_queryfailed_errormessage="not enough of the specified ${l_has_files_multi_entrytdesc}(s) is/are present. specified: '${l_has_files_multi_pathnames_orig_list}'."
+				;;
+
+			all | noneof )
+				# at no point inside the loop we have seen a
+				# match result (exists/does not exist) that we
+				# have not expected -> we have not seen any
+				# negative results.
+				l_has_files_multi_queryresult=1
+				;;
+
+			* )
+				f_abort "f_has_files_multi(): invalid/unsupported condition id: '${l_has_files_multi_condid}'" ;;
+		esac
+	fi
+	# invariant check: we need to have a result at this point
+	[ -n "${l_has_files_multi_queryresult}" ] \
+		|| f_abort "f_has_files_multi(): internal error: we do not have a vale for l_has_files_multi_queryresult at this point"
+
+	# show an error message (or abort the program) if the query has failed
+	#-? prev: v1: if [ "${l_has_files_multi_queryresult}" -eq 0 -a -n "${l_has_files_multi_queryfailed_showerror_flag}" ] ; then
+	#-? prev: v1: 	case "${l_has_files_multi_enforc}" in
+	#-? prev: v1: 		must )
+	#-? prev: v1: 			f_abort "${l_has_files_multi_queryfailed_errormessage}" ;;
+	#-? prev: v1: 		should )
+	#-? prev: v1: 			f_error "${l_has_files_multi_queryfailed_errormessage}" || : ;;
+	#-? prev: v1: 		* )
+	#-? prev: v1: 			if [ -n "${l_has_files_multi_queryresult_show_flag}" ] ; then
+	#-? prev: v1: 				f_info "${l_has_files_multi_queryfailed_errormessage}"
+	#-? prev: v1: 			else
+	#-? prev: v1: 				f_debug "${l_has_files_multi_queryfailed_errormessage}"
+	#-? prev: v1: 			fi
+	#-? prev: v1: 			;;
+	#-? prev: v1: 	esac
+	#-? prev: v1: fi
+	#-? prev: v2: if [ "${l_has_files_multi_queryresult}" -eq 0 ] ; then
+	#-? prev: v2: 	if [ -n "${l_has_files_multi_queryfailed_showerror_flag}" ] ; then
+	#-? prev: v2: 		case "${l_has_files_multi_enforc}" in
+	#-? prev: v2: 			must )
+	#-? prev: v2: 				f_abort "${l_has_files_multi_queryfailed_errormessage}" ;;
+	#-? prev: v2: 			should )
+	#-? prev: v2: 				f_error "${l_has_files_multi_queryfailed_errormessage}" || : ;;
+	#-? prev: v2: 			* )
+	#-? prev: v2: 				f_abort "f_has_files_multi(): attempting to show an error message for '--enforcing=${l_has_files_multi_enforc}' (unsupported case)"
+	#-? prev: v2: 				;;
+	#-? prev: v2: 		esac
+	#-? prev: v2: 	else
+	#-? prev: v2: 		if [ -n "${l_has_files_multi_queryresult_show_flag}" ] ; then
+	#-? prev: v2: 			f_info "${l_has_files_multi_queryfailed_errormessage}"
+	#-? prev: v2: 		else
+	#-? prev: v2: 			f_debug "${l_has_files_multi_queryfailed_errormessage}"
+	#-? prev: v2: 		fi
+	#-? prev: v2: 	fi
+	#-? prev: v2: fi
+	if [ "${l_has_files_multi_queryresult}" -eq 0 ] ; then
+		if [ -n "${l_has_files_multi_queryfailed_showerror_flag}" ] ; then
+			case "${l_has_files_multi_enforc}" in
+				must )
+					f_abort "${l_has_files_multi_queryfailed_errormessage}" ;;
+
+				should )
+					f_error "${l_has_files_multi_queryfailed_errormessage}" || : ;;
+
+				* )
+					f_abort "f_has_files_multi(): attempting to show an error message for '--enforcing=${l_has_files_multi_enforc}' (unsupported case)"
+					;;
+			esac
+		else
+			if [ -n "${l_has_files_multi_queryresult_show_flag}" ] ; then
+				f_info "${l_has_files_multi_queryfailed_errormessage}"
+			else
+				f_debug "${l_has_files_multi_queryfailed_errormessage}"
+			fi
+		fi
+	fi
+
+	# return value
+	[ "${l_has_files_multi_queryresult}" -ne 0 ]
+}
+
+# args: [DIR]
+# rc: 0: could perform query successfully.
+# side effects:
+#  * updates g_query_directory_last_result=CODE
+#    where CODE is one of: doesnotexist empty nonempty
+f_query_directory_is_empty_helper()
+{
+	unset g_query_directory_last_result
+	l_query_directory_is_empty_helper_pathname="${1:-$PWD}"
+
+	[ -n "${l_query_directory_is_empty_helper_pathname}" ] \
+		|| f_error "f_query_directory_is_empty_helper(): an empty pathname is not valid. returning error." \
+		|| return $?
+
+	while true ; do
+		case "${l_query_directory_is_empty_helper_pathname}" in
+			/ )
+				break ;;
+
+			*/ )
+				l_query_directory_is_empty_helper_pathname="${l_query_directory_is_empty_helper_pathname%/}"
+				;;
+
+			'' )
+				f_abort "f_query_directory_is_empty_helper(): internal error: path processing has resulted in an empty string."
+				;;
+
+			* )
+				break ;;
+		esac
+	done
+
+	f_debug "f_query_directory_is_empty_helper(): about to check status of (potential) directory name '${l_query_directory_is_empty_helper_pathname}'"
+
+	[ -e "${l_query_directory_is_empty_helper_pathname}" -a -d "${l_query_directory_is_empty_helper_pathname}/" ] \
+		|| g_query_directory_last_result='doesnotexist'
+
+	if [ -z "${g_query_directory_last_result}" ] ; then
+		unset l_query_directory_is_empty_helper_id
+
+		# example:
+		#  $ ( for d in /tmp/empty-dir /tmp/non-existing-dir ~/tmp ; do echo "dir: '$d'" && c=$(find ${d:+${d}/} -mindepth 1 -maxdepth 1 -printf 1 -quit || printf 2) && echo "c: '$c'" && [ -z "$c" ] ; printf 'rc:
+		#   %d\n\n' "$?" ; done ) ; echo "rc: $?"
+		#  dir: '/tmp/empty-dir'
+		#  c: ''
+		#  rc: 0
+		#  
+		#  dir: '/tmp/non-existing-dir'
+		#  find: ‘/tmp/non-existing-dir/’: No such file or directory
+		#  c: '2'
+		#  rc: 1
+		#  
+		#  dir: '/home/eze/tmp'
+		#  c: '1'
+		#  rc: 1
+		#  
+		#  rc: 0
+		# NOTE: shell wildcard matching does not seem to be particularly useful
+		l_query_directory_is_empty_helper_id=$(find "${l_query_directory_is_empty_helper_pathname}/" \
+				-mindepth 1 -maxdepth 1 \
+				-printf 'nonempty' -quit \
+				2> /dev/null \
+			|| printf 'error' )
+		case "${l_query_directory_is_empty_helper_id}" in
+			error )
+				f_error "could not detect whether directory '${l_query_directory_is_empty_helper_pathname}' has any contents or not. returning error." \
+					|| return $?
+				;;
+
+			'' )
+				g_query_directory_last_result='empty' ;;
+
+			nonempty )
+				g_query_directory_last_result='nonempty' ;;
+
+			* )
+				f_abort "f_query_directory_is_empty_helper(): internal error: unsupported/unhandled child process output: '${l_query_directory_is_empty_helper_id}'"
+				;;
+		esac
+	fi
+
+	f_debug "directory contents detection: pathname '${l_query_directory_is_empty_helper_pathname}' detection result is '${g_query_directory_last_result}'"
+	return 0
+}
+
+f_is_directory_exists()
+{
+	f_query_directory_is_empty_helper \
+		&& [ "${g_query_directory_last_result}" != 'doesnotexist' ]
+}
+
+f_is_directory_empty()
+{
+	f_query_directory_is_empty_helper \
+		&& [ "${g_query_directory_last_result}" = 'empty' ]
+}
+
+f_is_directory_nonempty()
+{
+	f_query_directory_is_empty_helper \
+		&& [ "${g_query_directory_last_result}" = 'nonempty' ]
+}
+
+#? (unfinished) v1: # MAYBE: have a single function: f_has_files_multi [options] -- FILES...
+#? (unfinished) v1: #  where options: --cond=[ at-least | all | noneof ] [--min=N] [--silent]
+#? (unfinished) v1: #
+#? (unfinished) v1: f_has_files_all()
+#? (unfinished) v1: {
+#? (unfinished) v1: 	while [ $# -gt 0 ]
+#? (unfinished) v1: 	do
+#? (unfinished) v1: 		l_has_files_leaf_fname="$1" \
+#? (unfinished) v1: 			&& shift \
+#? (unfinished) v1: 			|| f_abort "internal error: could not retrieve or shift a function argument"
+#? (unfinished) v1: 
+#? (unfinished) v1: 		[ -n "${l_has_files_leaf_fname}" ] || continue
+#? (unfinished) v1: 
+#? (unfinished) v1: 		# TODO: abstract-out the expression to use here.
+#? (unfinished) v1: 		#  IDEA: use f_has_files_getopts "$@" -> updates
+#? (unfinished) v1: 		#  g_has_files_opt_* variables, returns number of args to shift
+#? (unfinished) v1: 		#  in g_has_files_getopt_optind (or sometihing similarly name).
+#? (unfinished) v1: 		f_has_files_common_checkonefile 'must-exist' "${l_has_files_leaf_fname}" \
+#? (unfinished) v1: 			|| return $?
+#? (unfinished) v1: 	done
+#? (unfinished) v1: 	return 0
+#? (unfinished) v1: }
+#? (unfinished) v1: 
+#? (unfinished) v1: f_has_files_noneof()
+#? (unfinished) v1: {
+#? (unfinished) v1: 	while [ $# -gt 0 ]
+#? (unfinished) v1: 	do
+#? (unfinished) v1: 		l_has_files_leaf_fname="$1" \
+#? (unfinished) v1: 			&& shift \
+#? (unfinished) v1: 			|| f_abort "internal error: could not retrieve or shift a function argument"
+#? (unfinished) v1: 
+#? (unfinished) v1: 		[ -n "${l_has_files_leaf_fname}" ] || continue
+#? (unfinished) v1: 
+#? (unfinished) v1: 		# NOTE: see comments in f_has_files_all)(
+#? (unfinished) v1: 		f_has_files_common_checkonefile 'must-not-exist' "${l_has_files_leaf_fname}" \
+#? (unfinished) v1: 			|| return $?
+#? (unfinished) v1: 	done
+#? (unfinished) v1: 	return 0
+#? (unfinished) v1: }
+
+# }}}
+
+# functions {{{
+#? # args: (if present) dir to check (default: $PWD)
+f_local_proc_cwd_checksitecontentdir()
+{
+	#? ... prev: v1: f_has_files_noneof \
+	#? ... prev: v1: 		_config.yml Rakefile \
+	#? ... prev: v1: 		index.md \
+	#? ... prev: v1: 		.editorconfig .*vimrc \
+	#? ... prev: v1: 	|| return $?
+	#? ... prev: v1: # FIXME: implement these functions
+	#? ... prev: v1: if f_has_files_matching_silent index* ; then
+	#? ... prev: v1: 	f_has_files_atleast 1 index.html index.html.gz \
+	#? ... prev: v1: 		|| return $?
+	#? ... prev: v1: fi
+	#? ... prev: v1: return 0
+	# TODO: move this query to a function f_local_proc_cwd_checkcommon_sitesrcdir()
+	#  IDEA: process non-common options, such as --queryexpected=true (site is "src dir" ('--cond=all', or '--cond=at-least --min=2' (or whatever else))) or 'false' (site is *not* "src dir" ('--cond=noneof'))
+	#  IDEA: take "common" options (such as '--enforcing=... --silent'):
+	#   IDEA: #1: through a loop (where locally known options are extracted
+	#   and procesed, and other options are stored and then passed to
+	#   f_has_files_multi()).
+	#   IDEA: #2: through a function 
+	#    IDEA: use f_has_files_getopts "$@" -> updates g_has_files_opt_*
+	#    variables, returns number of args to shift in
+	#    g_has_files_getopt_optind (or sometihing similarly named).
+	# {{{
+
+	f_is_directory_exists \
+		|| return $?
+
+	f_is_directory_empty \
+		&& f_debug "empty directories are suitable 'site content' (candidate) directories" \
+		&& return 0
+
+	f_has_files_multi \
+			--entrytype=file \
+			--cond=noneof \
+			--enforcing=query \
+			_config.yml Rakefile \
+			index.md \
+			.editorconfig .*vimrc \
+		|| return $?
+
+	f_has_files_multi \
+			--entrytype=dir \
+			--cond=noneof \
+			--enforcing=query \
+			_drafts* \
+			_includes* \
+			_layouts* \
+			_plugins* \
+			_posts* \
+			_site* \
+			lftp[-_]*.cfg* \
+		|| return $?
+
+	# }}}
+
+	if f_has_files_multi \
+			--entrytype=file \
+			--cond=at-least \
+			--min=1 \
+			--enforcing=query \
+			--silent \
+			index*
+	then
+		# NOTE: the '.git' directory has an 'index' (no extension) file
+		f_has_files_multi \
+				--entrytype=any \
+				--cond=noneof \
+				--enforcing=query \
+				index \
+			|| return $?
+
+		f_has_files_multi \
+				--entrytype=file \
+				--cond=at-least \
+				--min=1 \
+				--enforcing=query \
+				index.html index.html.gz \
+			|| return $?
+	fi
+
+	# NOTE: whilst this might sound superflous based on the current "bail
+	# out early if directory is empty" case, this check does not hurt, and
+	# it works for empty directories, too, if the above condition is
+	# removed.
+	if f_is_directory_nonempty ; then
+		f_has_files_multi \
+				--entrytype=file \
+				--cond=at-least \
+				--min=1 \
+				--enforcing=query \
+				robots.txt* pages.html* \
+			|| return $?
+	fi
+
+	return 0
+}
+
+# }}}
+
+# main processing {{{
+[ $# -gt 0 ] \
+	|| f_abort "please specify at least one OPERATION_ID (or '--help')"
+
+for t_oper_id in "$@"
+do
+	t_oper_rc=0
+
+	case "${t_oper_id}" in
+		check-is-site-content-dir )
+			f_local_proc_cwd_checksitecontentdir \
+				|| t_oper_rc=$?
+			;;
+
+		* )
+			f_abort "unsupported/unrecognised OPERATION_ID '${t_oper_id}'" ;;
+	esac
+
+	if [ "${t_oper_rc}" -ne 0 ] ; then
+		f_error "specified operation '${t_oper_id}' failed. exiting." || :
+		exit ${t_oper_rc}
+	fi
+done
+
+f_info "specified operations '$*' succeeded."
+# }}}
