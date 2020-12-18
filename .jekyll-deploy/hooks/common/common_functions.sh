@@ -69,6 +69,9 @@ f_cd_to_sourcedir()
 
 f_standard_init()
 {
+	# it seems that 'stderr' does not show on github actions logs, so we redirect stderr to stdout.
+	exec 2>&1
+
 	# IDEA: abstract "*_standard_*()" error handling into a function that the user can override: f_standard_handleerror "$?" "error message (several args...)"
 	f_standard_preconditions_check \
 		|| f_abort "f_standard_preconditions_check failed"
