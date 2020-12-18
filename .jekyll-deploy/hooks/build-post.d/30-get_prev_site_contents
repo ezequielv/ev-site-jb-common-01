@@ -55,6 +55,19 @@ f_git_has_remote_target_branch()
 		| grep -q -e "[[:blank:]]refs/heads/${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}\$"
 }
 
+f_git_has_target_branch()
+{
+	# NOTE: redirection of stderr will cut out the debug messages, but we
+	# want to remove error messages, so we pay the price.
+	# (but we get "--dry-run"-friendly behaviour here)
+	f_debug "f_git_has_target_branch(): check to see if ref '${g_jekylldeploy_targetbranch_ref}' exists in git dir for '${PWD}'"
+	l_git_has_target_branch_rc=0
+	f_cmd_git_gen rev-parse --verify "${g_jekylldeploy_targetbranch_ref}" > /dev/null 2>&1 \
+		|| l_git_has_target_branch_rc=$?
+	f_debug "f_git_has_target_branch():  returning ${l_git_has_target_branch_rc}"
+	return ${l_git_has_target_branch_rc}
+}
+
 # side effects: g_git_fetch_has_ref={ 0 | 1 }
 f_git_fetch_target_branch()
 {
