@@ -90,20 +90,6 @@ f_jekyllbuilddir_has_compressed_content()
 		esac
 	fi
 
-	#? prev: v1: if [ ${l_jekyllbuilddir_has_compressed_content_rc} -ne 0 -a -n "${l_jekyllbuilddir_has_compressed_content_showmessage_flag}" -a -n "${l_jekyllbuilddir_has_compressed_content_errormessage}" ] ; then
-	#? prev: v1: 	#? ... unset l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage
-	#? prev: v1: 	#? ... case "${l_jekyllbuilddir_has_compressed_content_doifnotfound}" in
-	#? prev: v1: 	#? ... 	'accepted' )
-	#? prev: v1: 	#? ... 		l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage='[info]'
-	#? prev: v1: 	#? ... 		;;
-	#? prev: v1: 	#? ... 	* )
-	#? prev: v1: 	#? ... 		l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage='ERROR:'
-	#? prev: v1: 	#? ... 		;;
-	#? prev: v1: 	#? ... esac
-	#? prev: v1: 	#? ... [ -n "${l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage}" ] \
-	#? prev: v1: 	#? ... 	&& l_jekyllbuilddir_has_compressed_content_errormessage="${l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage} ${l_jekyllbuilddir_has_compressed_content_errormessage}"
-	#? prev: v1: 	#? ... f_error "failed to detect compressed contents in directory '${l_jekyllbuilddir_has_compressed_content_dir}': ${l_jekyllbuilddir_has_compressed_content_errormessage}" || :
-	#? prev: v1: fi
 	if [ ${l_jekyllbuilddir_has_compressed_content_rc} -ne 0 ] ; then
 		l_jekyllbuilddir_has_compressed_content_errormessage="reporting directory '${l_jekyllbuilddir_has_compressed_content_dir}' as not having compressed contents${l_jekyllbuilddir_has_compressed_content_errormessage:+. reason: ${l_jekyllbuilddir_has_compressed_content_errormessage}}"
 		if [ -n "${l_jekyllbuilddir_has_compressed_content_showmessage_flag}" ] ; then
