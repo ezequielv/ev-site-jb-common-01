@@ -117,7 +117,9 @@ f_jekyllbuilddir_has_compressed_content()
 g_debug_flag=1
 # }}}
 
-f_jekyllbuilddir_has_compressed_content 'show-message' -- "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" \
+: \
+	&& f_jekyllbuilddir_has_compressed_content 'show-message' -- "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" \
+	&& f_jekyllbuilddir_has_compressed_content 'show-message' -- "${JEKYLLDEPLOY_HOOKS_SITECONTENT_BUILD_DIR}" \
 	|| exit 0
 
 [ -n "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" ] \
