@@ -1,0 +1,122 @@
+#!/bin/sh
+set -e
+
+# boilerplate {{{
+. "${0%/*}/../common/common_functions.sh" || exit $?
+f_standard_init
+# }}}
+
+# TODO: remove: testing {{{
+g_debug_flag=1
+# }}}
+
+[ -n "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" ] \
+	|| f_abort "environment variable 'JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR' is unset. f_standard_init ('common_functions.sh') should have set it."
+
+[ -d "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}/" ] \
+	|| {
+		f_info "directory '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}' already exists.  skipping."
+		exit 0
+	}
+
+# TODO: move to '[...]/common_functions.sh' {{{
+f_git_init_from_basedir()
+{
+	l_git_init_from_basedir_dst_dir="${1}"
+
+	[ -n "${l_git_init_from_basedir_dst_dir}" ] \
+		|| f_error "f_git_init_from_basedir(): needs to specify a non-empty pathname" \
+		|| return $?
+
+	[ ! -d "${l_git_init_from_basedir_dst_dir}/" ] \
+		|| f_error "f_git_init_from_basedir(): output directory '${l_git_init_from_basedir_dst_dir}' already exists.  returning error code." \
+		|| return $?
+
+	# NOTE: setup steps inspired by '[ezequielv/jekyll-deploy]/deployer/entrypoint.rb' {{{
+	f_cmd_run mkdir -pv "${l_git_init_from_basedir_dst_dir}" \
+		&& f_cmd_run cp -av "${JEKYLLDEPLOY_HOOKS_BASE_DIR}/.git/config" "${l_git_init_from_basedir_dst_dir}/.git/" \
+		|| f_error "failed to set up git directory '${l_git_init_from_basedir_dst_dir}'" \
+		|| return $?
+	# }}}
+
+	return 0
+}
+
+g_jekylldeploy_targetbranch_ref="refs/remotes/${JEKYLLDEPLOY_HOOKS_GIT_REMOTE_NAME}/${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}"
+
+f_git_has_remote_target_branch()
+{
+	# example 'git ls-remote' output:
+	#  bb4daaa2ec80e02236cf3b21c98ac5cec5f26730        refs/heads/gh-pages
+	git ls-remote --heads ${JEKYLLDEPLOY_HOOKS_GIT_REMOTE_NAME} \
+			2> /dev/null \
+		| grep -q -e "[::blank:]]refs/heads/${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}\$"
+}
+
+# side effects: g_git_fetch_has_ref={ 0 | 1 }
+f_git_fetch_target_branch()
+{
+	unset g_git_fetch_has_ref
+
+	f_git_has_target_branch \
+		&& {
+			f_debug "branch '${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}' already exists"
+			g_git_fetch_has_ref=1
+			return 0
+		}
+
+	f_git_has_remote_target_branch \
+		|| {
+			f_info "remote '${JEKYLLDEPLOY_HOOKS_GIT_REMOTE_NAME}' does not have the '${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}' branch"
+			g_git_fetch_has_ref=0
+			return 0
+		}
+
+	# from now on, retrieving the remote branch (ref) should work
+	#  -> report error if it does not
+	f_cmd_git_gen \
+			fetch --no-tags --no-recurse-submodules \
+			--depth=1 \
+			"${JEKYLLDEPLOY_HOOKS_GIT_REMOTE_NAME}" "${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}:${g_jekylldeploy_targetbranch_ref}" \
+		|| f_error "failed when running 'git fetch' for target branch '${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}'" \
+		|| return $?
+
+	g_git_fetch_has_ref=1
+	return 0
+}
+
+# }}}
+
+# check '${JEKYLLDEPLOY_HOOKS_SOURCE_DIR}' {{{
+f_cmd_run cd "${JEKYLLDEPLOY_HOOKS_SOURCE_DIR}"
+
+f_git_has_remote_target_branch \
+	|| {
+		f_info "remote '${JEKYLLDEPLOY_HOOKS_GIT_REMOTE_NAME}' does not have the '${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}' branch: creating empty directory '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}' and exiting."
+		[ -d "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}/" ] \
+			|| f_cmd_run mkdir -pv "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" \
+			|| f_abort "failed to create (empty) directory '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}'."
+		return 0
+	}
+
+f_cmd_run cd -
+# }}}
+
+# git init '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}' {{{
+f_git_init_from_basedir "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" \
+	|| f_abort "could not initialise a 'mirrored' git directory in '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}'"
+# }}}
+
+# work on '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}' {{{
+f_cmd_run cd "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}"
+
+f_git_fetch_target_branch \
+	|| f_abort "failed to retrieve remote branch ref '${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}'"
+
+f_cmd_git_gen \
+		checkout --detach "${g_jekylldeploy_targetbranch_ref}" \
+	|| f_abort "failed to checkout branch ref '${g_jekylldeploy_targetbranch_ref}'"
+
+f_cmd_run cd -
+# }}}
+
