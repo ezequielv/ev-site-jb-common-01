@@ -186,7 +186,7 @@ while [ $# -gt 0 ] ; do
 			f_setsite "${t_arg_val}" ;;
 
 		--help )
-			f_echo_to_stdout "syntax: $0 [--dry-run] [--mode={ prod | dev }] [--site={ github | dev}] HOOKS..."
+			f_echo_to_stdout "syntax: $0 [--dry-run] [--debug] [--mode={ prod | dev }] [--site={ github | dev}] HOOKS..."
 			f_echo_to_stdout " HOOKS: one or more of: post-checkout mod-pvt-all mod-pvt-checkout mod-pvt-post-checkout (and others)"
 			exit 0
 			;;
