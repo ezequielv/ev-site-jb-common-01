@@ -6,6 +6,136 @@ set -e
 f_standard_init
 # }}}
 
+# FIXME: move to 'common_functions.sh' {{{
+f_jekyllbuilddir_has_compressed_content()
+{
+	unset \
+		l_jekyllbuilddir_has_compressed_content_showmessage_flag \
+		l_jekyllbuilddir_has_compressed_content_errormessage \
+		# end
+
+	l_jekyllbuilddir_has_compressed_content_doifnotfound='accepted'
+
+	while [ $# -gt 0 ] ; do
+		l_jekyllbuilddir_has_compressed_content_arg_full="$1"
+		shift
+
+		case "${l_jekyllbuilddir_has_compressed_content_arg_full}" in
+			'show-message' )
+				l_jekyllbuilddir_has_compressed_content_showmessage_flag=x ;;
+
+			# when-nocompressedcontents-{value} )
+			when-nocompressedcontents-* )
+				l_jekyllbuilddir_has_compressed_content_arg_val="${l_jekyllbuilddir_has_compressed_content_arg_full##*-}"
+				l_jekyllbuilddir_has_compressed_content_doifnotfound="${l_jekyllbuilddir_has_compressed_content_arg_val}"
+				;;
+
+			-- )
+				break ;;
+
+			* )
+				f_abort "f_jekyllbuilddir_has_compressed_content(): invalid arg: '${l_jekyllbuilddir_has_compressed_content_arg_full}'"
+		esac
+	done
+
+	l_jekyllbuilddir_has_compressed_content_dir="${1:-JEKYLLDEPLOY_HOOKS_SITECONTENT_BUILD_DIR}"
+
+	[ -n "${l_jekyllbuilddir_has_compressed_content_dir}" ] \
+		|| f_error "specified argument for the directory to be tested is empty" \
+		|| return $?
+
+	l_jekyllbuilddir_has_compressed_content_rc=0
+
+	if [ ${l_jekyllbuilddir_has_compressed_content_rc} -eq 0 ] ; then
+		[ -d "${l_jekyllbuilddir_has_compressed_content_dir}/" ] \
+			|| {
+				l_jekyllbuilddir_has_compressed_content_rc=$?
+				l_jekyllbuilddir_has_compressed_content_errormessage="directory '${l_jekyllbuilddir_has_compressed_content_dir}' does not exist"
+			}
+	fi
+
+	if [ ${l_jekyllbuilddir_has_compressed_content_rc} -eq 0 ] ; then
+		l_jekyllbuilddir_has_compressed_content_cmdoutput=`
+				find "${l_jekyllbuilddir_has_compressed_content_dir}/" \
+						-mindepth 1 -maxdepth 1 \
+						-type f \
+						'(' \
+							-iname '*.htm' \
+							-o \
+							-iname '*.html' \
+						')' \
+						'(' \
+							-exec test -f '{}.gz' ';' \
+						')' \
+						-printf 1 -quit 2> /dev/null \
+					|| printf 2 \
+			` || l_jekyllbuilddir_has_compressed_content_cmdoutput=2
+		case "${l_jekyllbuilddir_has_compressed_content_cmdoutput}" in
+			1 )
+				f_debug "found compressed site content in directory '${l_jekyllbuilddir_has_compressed_content_dir}'"
+				;;
+
+			2 )
+				l_jekyllbuilddir_has_compressed_content_rc="${l_jekyllbuilddir_has_compressed_content_cmdoutput}"
+				l_jekyllbuilddir_has_compressed_content_errormessage="error when trying to find compressed site content in directory '${l_jekyllbuilddir_has_compressed_content_dir}'"
+				f_debug "${l_jekyllbuilddir_has_compressed_content_errormessage}"
+				;;
+
+			# really ''
+			* )
+				l_jekyllbuilddir_has_compressed_content_rc=1
+				l_jekyllbuilddir_has_compressed_content_errormessage="no compressed site content found in directory '${l_jekyllbuilddir_has_compressed_content_dir}'"
+				f_debug "${l_jekyllbuilddir_has_compressed_content_errormessage}"
+				;;
+		esac
+	fi
+
+	#? prev: v1: if [ ${l_jekyllbuilddir_has_compressed_content_rc} -ne 0 -a -n "${l_jekyllbuilddir_has_compressed_content_showmessage_flag}" -a -n "${l_jekyllbuilddir_has_compressed_content_errormessage}" ] ; then
+	#? prev: v1: 	#? ... unset l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage
+	#? prev: v1: 	#? ... case "${l_jekyllbuilddir_has_compressed_content_doifnotfound}" in
+	#? prev: v1: 	#? ... 	'accepted' )
+	#? prev: v1: 	#? ... 		l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage='[info]'
+	#? prev: v1: 	#? ... 		;;
+	#? prev: v1: 	#? ... 	* )
+	#? prev: v1: 	#? ... 		l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage='ERROR:'
+	#? prev: v1: 	#? ... 		;;
+	#? prev: v1: 	#? ... esac
+	#? prev: v1: 	#? ... [ -n "${l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage}" ] \
+	#? prev: v1: 	#? ... 	&& l_jekyllbuilddir_has_compressed_content_errormessage="${l_jekyllbuilddir_has_compressed_content_notfoundoutcomemessage} ${l_jekyllbuilddir_has_compressed_content_errormessage}"
+	#? prev: v1: 	#? ... f_error "failed to detect compressed contents in directory '${l_jekyllbuilddir_has_compressed_content_dir}': ${l_jekyllbuilddir_has_compressed_content_errormessage}" || :
+	#? prev: v1: fi
+	if [ ${l_jekyllbuilddir_has_compressed_content_rc} -ne 0 ] ; then
+		l_jekyllbuilddir_has_compressed_content_errormessage="reporting directory '${l_jekyllbuilddir_has_compressed_content_dir}' as not having compressed contents${l_jekyllbuilddir_has_compressed_content_errormessage:+. reason: ${l_jekyllbuilddir_has_compressed_content_errormessage}}"
+		if [ -n "${l_jekyllbuilddir_has_compressed_content_showmessage_flag}" ] ; then
+			case "${l_jekyllbuilddir_has_compressed_content_doifnotfound}" in
+				'accepted' | 'accept' )
+					f_info "${l_jekyllbuilddir_has_compressed_content_errormessage}"
+					;;
+
+				# MAYBE: check for other valid values (MAYBE: 'error'/'fail', ...)
+
+				* )
+					f_error "${l_jekyllbuilddir_has_compressed_content_errormessage}" || :
+					;;
+			esac
+		else
+			f_debug "${l_jekyllbuilddir_has_compressed_content_errormessage}"
+		fi
+	fi
+	f_debug "f_jekyllbuilddir_has_compressed_content(): returning ${l_jekyllbuilddir_has_compressed_content_rc}"
+	return ${l_jekyllbuilddir_has_compressed_content_rc}
+}
+# }}}
+
+# TODO: remove: testing {{{
+g_debug_flag=1
+# }}}
+
+f_jekyllbuilddir_has_compressed_content 'show-message' -- "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" \
+	|| exit 0
+
+[ -n "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}" ] \
+	|| f_abort "environment variable 'JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR' is unset. f_standard_init ('common_functions.sh') should have set it."
 [ -d "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}/" ] \
 	|| f_abort "directory '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}' does not exist.  another script sould have populated that directory before this point."
 
