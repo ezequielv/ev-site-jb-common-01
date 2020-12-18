@@ -14,7 +14,7 @@ g_debug_flag=1
 	|| f_abort "environment variable 'JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR' is unset. f_standard_init ('common_functions.sh') should have set it."
 
 [ -d "${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}/" ] \
-	|| {
+	&& {
 		f_info "directory '${JEKYLLDEPLOY_HOOKS_SITECONTENT_PREV_DIR}' already exists.  skipping."
 		exit 0
 	}
