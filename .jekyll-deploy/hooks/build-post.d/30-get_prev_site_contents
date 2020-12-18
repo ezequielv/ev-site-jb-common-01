@@ -50,7 +50,7 @@ f_git_has_remote_target_branch()
 	#  bb4daaa2ec80e02236cf3b21c98ac5cec5f26730        refs/heads/gh-pages
 	git ls-remote --heads ${JEKYLLDEPLOY_HOOKS_GIT_REMOTE_NAME} \
 			2> /dev/null \
-		| grep -q -e "[::blank:]]refs/heads/${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}\$"
+		| grep -q -e "[[:blank:]]refs/heads/${JEKYLLDEPLOY_HOOKS_TARGET_BRANCH}\$"
 }
 
 # side effects: g_git_fetch_has_ref={ 0 | 1 }
